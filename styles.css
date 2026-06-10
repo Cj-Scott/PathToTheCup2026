@@ -42,14 +42,24 @@ button {
   position: sticky;
   top: 0;
   z-index: 10;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(420px, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 24px;
   padding: 20px clamp(18px, 4vw, 46px);
   background: rgba(244, 247, 244, 0.91);
   border-bottom: 1px solid rgba(215, 224, 223, 0.8);
   backdrop-filter: blur(18px);
+}
+
+.updated-stamp {
+  justify-self: center;
+  align-self: start;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 h1,
@@ -79,6 +89,7 @@ h2 {
 }
 
 .controls {
+  justify-self: end;
   display: grid;
   grid-template-columns: minmax(220px, 320px) minmax(190px, 250px);
   gap: 12px;
@@ -1056,7 +1067,12 @@ main {
   }
 
   .controls {
+    justify-self: stretch;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .updated-stamp {
+    justify-self: start;
   }
 
   .groups-grid,
@@ -1076,6 +1092,10 @@ main {
 @media (max-width: 680px) {
   .topbar {
     position: static;
+  }
+
+  .updated-stamp {
+    justify-self: center;
   }
 
   .controls,

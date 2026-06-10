@@ -56,6 +56,8 @@ The app sets browser language hints from `navigator.language` so built-in browse
 
 Schedule times default to your browser's local timezone. Use the `Time` selector in the Schedule toolbar to switch between local time and UTC. The selection is saved in `localStorage`.
 
+Kickoff times are stored in `app.js` as UTC ISO timestamps ending in `Z`. Local display is derived from the user's system/browser timezone with `Intl.DateTimeFormat`, so the same fixture will automatically render differently for viewers in different regions. Group-stage kickoff times were validated against published Eastern Time listings, and knockout kickoff times were normalized from published BST listings to UTC.
+
 ## Live Scores
 
 Scores are checked on page refresh.

@@ -73,21 +73,6 @@ const groups = {
   ]
 };
 
-const groupDates = {
-  A: ["2026-06-11", "2026-06-18", "2026-06-24"],
-  B: ["2026-06-12", "2026-06-18", "2026-06-24"],
-  C: ["2026-06-13", "2026-06-19", "2026-06-24"],
-  D: ["2026-06-12", "2026-06-19", "2026-06-25"],
-  E: ["2026-06-14", "2026-06-20", "2026-06-25"],
-  F: ["2026-06-14", "2026-06-20", "2026-06-25"],
-  G: ["2026-06-15", "2026-06-21", "2026-06-26"],
-  H: ["2026-06-15", "2026-06-21", "2026-06-26"],
-  I: ["2026-06-16", "2026-06-22", "2026-06-26"],
-  J: ["2026-06-16", "2026-06-22", "2026-06-27"],
-  K: ["2026-06-17", "2026-06-23", "2026-06-27"],
-  L: ["2026-06-17", "2026-06-23", "2026-06-27"]
-};
-
 const venues = [
   "Mexico City", "Toronto", "Los Angeles", "New York/New Jersey",
   "Dallas", "Kansas City", "Atlanta", "Seattle", "Miami", "Boston",
@@ -188,10 +173,114 @@ const allTeams = Object.entries(groups).flatMap(([group, list], index) =>
 
 const teamByName = Object.fromEntries(allTeams.map(team => [team.name, team]));
 
-const matchPairs = [
-  [[0, 1], [2, 3]],
-  [[0, 2], [3, 1]],
-  [[3, 0], [1, 2]]
+const officialGroupFixtures = [
+  ["A", "Mexico", "South Africa", "2026-06-11T19:00:00Z", "FOX"],
+  ["A", "South Korea", "Czechia", "2026-06-12T02:00:00Z", "FS1"],
+  ["B", "Canada", "Bosnia and Herzegovina", "2026-06-12T19:00:00Z", "FOX"],
+  ["D", "United States", "Paraguay", "2026-06-13T01:00:00Z", "FOX"],
+  ["B", "Qatar", "Switzerland", "2026-06-13T19:00:00Z", "FOX"],
+  ["C", "Brazil", "Morocco", "2026-06-13T22:00:00Z", "FOX"],
+  ["C", "Haiti", "Scotland", "2026-06-14T01:00:00Z", "FOX"],
+  ["D", "Australia", "Turkey", "2026-06-14T04:00:00Z", "FS1"],
+  ["E", "Germany", "Curacao", "2026-06-14T17:00:00Z", "FOX"],
+  ["F", "Netherlands", "Japan", "2026-06-14T20:00:00Z", "FOX"],
+  ["E", "Ivory Coast", "Ecuador", "2026-06-14T23:00:00Z", "FS1"],
+  ["F", "Sweden", "Tunisia", "2026-06-15T02:00:00Z", "FS1"],
+  ["H", "Spain", "Cape Verde", "2026-06-15T16:00:00Z", "FOX"],
+  ["G", "Belgium", "Egypt", "2026-06-15T19:00:00Z", "FOX"],
+  ["H", "Saudi Arabia", "Uruguay", "2026-06-15T22:00:00Z", "FS1"],
+  ["G", "Iran", "New Zealand", "2026-06-16T01:00:00Z", "FS1"],
+  ["I", "France", "Senegal", "2026-06-16T19:00:00Z", "FOX"],
+  ["I", "Iraq", "Norway", "2026-06-16T22:00:00Z", "FOX"],
+  ["J", "Argentina", "Algeria", "2026-06-17T01:00:00Z", "FOX"],
+  ["J", "Austria", "Jordan", "2026-06-17T04:00:00Z", "FS1"],
+  ["K", "Portugal", "DR Congo", "2026-06-17T17:00:00Z", "FOX"],
+  ["L", "England", "Croatia", "2026-06-17T20:00:00Z", "FOX"],
+  ["L", "Ghana", "Panama", "2026-06-17T23:00:00Z", "FS1"],
+  ["K", "Uzbekistan", "Colombia", "2026-06-18T02:00:00Z", "FS1"],
+  ["A", "Czechia", "South Africa", "2026-06-18T16:00:00Z", "FOX"],
+  ["B", "Switzerland", "Bosnia and Herzegovina", "2026-06-18T19:00:00Z", "FOX"],
+  ["B", "Canada", "Qatar", "2026-06-18T22:00:00Z", "FS1"],
+  ["A", "Mexico", "South Korea", "2026-06-19T01:00:00Z", "FOX"],
+  ["D", "United States", "Australia", "2026-06-19T19:00:00Z", "FOX"],
+  ["C", "Scotland", "Morocco", "2026-06-19T22:00:00Z", "FOX"],
+  ["C", "Brazil", "Haiti", "2026-06-20T00:30:00Z", "FOX"],
+  ["D", "Turkey", "Paraguay", "2026-06-20T03:00:00Z", "FS1"],
+  ["F", "Netherlands", "Sweden", "2026-06-20T17:00:00Z", "FOX"],
+  ["E", "Germany", "Ivory Coast", "2026-06-20T20:00:00Z", "FOX"],
+  ["E", "Ecuador", "Curacao", "2026-06-21T00:00:00Z", "FS1"],
+  ["F", "Tunisia", "Japan", "2026-06-21T04:00:00Z", "FS1"],
+  ["H", "Spain", "Saudi Arabia", "2026-06-21T16:00:00Z", "FOX"],
+  ["G", "Belgium", "Iran", "2026-06-21T19:00:00Z", "FS1"],
+  ["H", "Uruguay", "Cape Verde", "2026-06-21T22:00:00Z", "FS1"],
+  ["G", "New Zealand", "Egypt", "2026-06-22T01:00:00Z", "FS1"],
+  ["J", "Argentina", "Austria", "2026-06-22T17:00:00Z", "FOX"],
+  ["I", "France", "Iraq", "2026-06-22T21:00:00Z", "FOX"],
+  ["I", "Norway", "Senegal", "2026-06-23T00:00:00Z", "FOX"],
+  ["J", "Jordan", "Algeria", "2026-06-23T03:00:00Z", "FS1"],
+  ["K", "Portugal", "Uzbekistan", "2026-06-23T17:00:00Z", "FOX"],
+  ["L", "England", "Ghana", "2026-06-23T20:00:00Z", "FOX"],
+  ["L", "Panama", "Croatia", "2026-06-23T23:00:00Z", "FOX"],
+  ["K", "Colombia", "DR Congo", "2026-06-24T02:00:00Z", "FS1"],
+  ["B", "Bosnia and Herzegovina", "Qatar", "2026-06-24T19:00:00Z", "FOX"],
+  ["B", "Switzerland", "Canada", "2026-06-24T19:00:00Z", "FS1"],
+  ["C", "Morocco", "Haiti", "2026-06-24T22:00:00Z", "FS1"],
+  ["C", "Scotland", "Brazil", "2026-06-24T22:00:00Z", "FOX"],
+  ["A", "Czechia", "Mexico", "2026-06-25T01:00:00Z", "FS1"],
+  ["A", "South Africa", "South Korea", "2026-06-25T01:00:00Z", "FOX"],
+  ["E", "Curacao", "Ivory Coast", "2026-06-25T20:00:00Z", "FS1"],
+  ["E", "Ecuador", "Germany", "2026-06-25T20:00:00Z", "FOX"],
+  ["F", "Japan", "Sweden", "2026-06-25T23:00:00Z", "FOX"],
+  ["F", "Tunisia", "Netherlands", "2026-06-25T23:00:00Z", "FS1"],
+  ["D", "Paraguay", "Australia", "2026-06-26T02:00:00Z", "FOX"],
+  ["D", "Turkey", "United States", "2026-06-26T02:00:00Z", "FS1"],
+  ["I", "Norway", "France", "2026-06-26T19:00:00Z", "FOX"],
+  ["I", "Senegal", "Iraq", "2026-06-26T19:00:00Z", "FS1"],
+  ["H", "Cape Verde", "Saudi Arabia", "2026-06-27T00:00:00Z", "FS1"],
+  ["H", "Uruguay", "Spain", "2026-06-27T00:00:00Z", "FOX"],
+  ["G", "Egypt", "Iran", "2026-06-27T03:00:00Z", "FOX"],
+  ["G", "New Zealand", "Belgium", "2026-06-27T03:00:00Z", "FS1"],
+  ["L", "Croatia", "Ghana", "2026-06-27T21:00:00Z", "FOX"],
+  ["L", "Panama", "England", "2026-06-27T21:00:00Z", "FS1"],
+  ["K", "Colombia", "Portugal", "2026-06-27T23:30:00Z", "FOX"],
+  ["K", "DR Congo", "Uzbekistan", "2026-06-27T23:30:00Z", "FS1"],
+  ["J", "Algeria", "Austria", "2026-06-28T02:00:00Z", "FS1"],
+  ["J", "Jordan", "Argentina", "2026-06-28T02:00:00Z", "FOX"]
+];
+
+const knockoutScheduleUtc = [
+  ["Round of 32", "2026-06-28T19:00:00Z", 1],
+  ["Round of 32", "2026-06-29T17:00:00Z", 1],
+  ["Round of 32", "2026-06-29T20:30:00Z", 1],
+  ["Round of 32", "2026-06-30T01:00:00Z", 1],
+  ["Round of 32", "2026-06-30T17:00:00Z", 1],
+  ["Round of 32", "2026-06-30T21:00:00Z", 1],
+  ["Round of 32", "2026-07-01T01:00:00Z", 1],
+  ["Round of 32", "2026-07-01T16:00:00Z", 1],
+  ["Round of 32", "2026-07-01T20:00:00Z", 1],
+  ["Round of 32", "2026-07-02T00:00:00Z", 1],
+  ["Round of 32", "2026-07-02T19:00:00Z", 1],
+  ["Round of 32", "2026-07-02T23:00:00Z", 1],
+  ["Round of 32", "2026-07-03T03:00:00Z", 1],
+  ["Round of 32", "2026-07-03T18:00:00Z", 1],
+  ["Round of 32", "2026-07-03T22:00:00Z", 1],
+  ["Round of 32", "2026-07-04T01:30:00Z", 1],
+  ["Round of 16", "2026-07-04T17:00:00Z", 1],
+  ["Round of 16", "2026-07-04T21:00:00Z", 1],
+  ["Round of 16", "2026-07-05T20:00:00Z", 1],
+  ["Round of 16", "2026-07-06T00:00:00Z", 1],
+  ["Round of 16", "2026-07-06T19:00:00Z", 1],
+  ["Round of 16", "2026-07-07T00:00:00Z", 1],
+  ["Round of 16", "2026-07-07T16:00:00Z", 1],
+  ["Round of 16", "2026-07-07T20:00:00Z", 1],
+  ["Quarter-final", "2026-07-09T20:00:00Z", 1],
+  ["Quarter-final", "2026-07-10T19:00:00Z", 1],
+  ["Quarter-final", "2026-07-11T21:00:00Z", 1],
+  ["Quarter-final", "2026-07-12T01:00:00Z", 1],
+  ["Semi-final", "2026-07-14T19:00:00Z", 1],
+  ["Semi-final", "2026-07-15T19:00:00Z", 1],
+  ["Third-place match", "2026-07-18T21:00:00Z", 1],
+  ["Final", "2026-07-19T19:00:00Z", 1]
 ];
 
 const matches = buildGroupMatches().concat(buildKnockoutMatches());
@@ -212,6 +301,7 @@ let timezoneMode = localStorage.getItem("timezoneMode") || "local";
 
 const els = {
   search: document.querySelector("#searchInput"),
+  updatedStamp: document.querySelector("#updatedStamp"),
   select: document.querySelector("#teamSelect"),
   focus: document.querySelector("#focusPanel"),
   matchList: document.querySelector("#matchList"),
@@ -233,6 +323,7 @@ init();
 
 function init() {
   document.documentElement.lang = navigator.language || "en";
+  updatePageTimestamp();
   els.select.innerHTML = [...allTeams]
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(team => `<option value="${team.name}">${team.code} - ${team.name} - FIFA #${team.ranking}</option>`)
@@ -570,56 +661,46 @@ function renderTeams() {
 }
 
 function buildGroupMatches() {
-  let id = 1;
-  return Object.entries(groups).flatMap(([group, list], groupIndex) => {
-    const groupTeams = list.map(team => team[0]);
-    return matchPairs.flatMap((roundPairs, roundIndex) =>
-      roundPairs.map((pair, pairIndex) => {
-        const date = makeDate(groupDates[group][roundIndex], groupIndex, roundIndex, pairIndex);
-        const teams = [groupTeams[pair[0]], groupTeams[pair[1]]];
-        return {
-          id: `G${id++}`,
-          stage: "Group",
-          round: `Group ${group}, Matchday ${roundIndex + 1}`,
-          group,
-          teams,
-          date,
-          venue: venues[(groupIndex * 2 + roundIndex + pairIndex) % venues.length],
-          channel: pickChannel(teams, roundIndex, pairIndex),
-          status: "Scheduled",
-          note: buildMatchContext(teams, group),
-          impact: "Three points for a win, one for a draw. Top two advance; eight third-place teams also qualify."
-        };
-      })
-    );
+  const groupMatchCounts = {};
+  return officialGroupFixtures.map(([group, home, away, date, channel], index) => {
+    groupMatchCounts[group] = (groupMatchCounts[group] || 0) + 1;
+    const teams = [home, away];
+    const matchday = Math.ceil(groupMatchCounts[group] / 2);
+    return {
+      id: `G${index + 1}`,
+      stage: "Group",
+      round: `Group ${group}, Matchday ${matchday}`,
+      group,
+      teams,
+      date,
+      venue: venues[index % venues.length],
+      channel,
+      status: "Scheduled",
+      note: buildMatchContext(teams, group),
+      impact: "Three points for a win, one for a draw. Top two advance; eight third-place teams also qualify."
+    };
   });
 }
 
 function buildKnockoutMatches() {
-  const dates = [
-    ["Round of 32", "2026-06-28", 16],
-    ["Round of 16", "2026-07-04", 8],
-    ["Quarter-final", "2026-07-09", 4],
-    ["Semi-final", "2026-07-14", 2],
-    ["Third-place match", "2026-07-18", 1],
-    ["Final", "2026-07-19", 1]
-  ];
-  let id = 73;
-  return dates.flatMap(([round, startDate, count], roundIndex) =>
-    Array.from({ length: count }, (_, index) => ({
-      id: `K${id++}`,
+  const roundCounts = {};
+  return knockoutScheduleUtc.map(([round, date], index) => {
+    roundCounts[round] = (roundCounts[round] || 0) + 1;
+    const matchNumber = roundCounts[round];
+    return {
+      id: `K${73 + index}`,
       stage: "Knockout",
       round,
       group: "",
-      teams: [`${round} slot ${index * 2 + 1}`, `${round} slot ${index * 2 + 2}`],
-      date: makeDate(startDate, index, roundIndex, 0),
-      venue: venues[(index + roundIndex * 3) % venues.length],
-      channel: round === "Final" || round === "Semi-final" ? "FOX" : index % 3 === 0 ? "FOX" : "FS1",
+      teams: [`${round} entrant ${matchNumber}A`, `${round} entrant ${matchNumber}B`],
+      date,
+      venue: venues[index % venues.length],
+      channel: round === "Final" || round === "Semi-final" || round === "Third-place match" ? "FOX" : index % 3 === 0 ? "FOX" : "FS1",
       status: "Pending qualifiers",
       note: "Team names populate as the bracket is resolved.",
       impact: "Single-elimination match. Extra time and penalties decide tied knockout games."
-    }))
-  );
+    };
+  });
 }
 
 function getStandings(group) {
@@ -1083,17 +1164,6 @@ function getPathCopy(group) {
   return { winner, runnerUp, third };
 }
 
-function pickChannel(teams, roundIndex, pairIndex) {
-  const foxTeams = new Set(["United States", "Mexico", "Canada", "Argentina", "Brazil", "England", "France", "Spain", "Germany", "Portugal"]);
-  return teams.some(team => foxTeams.has(team)) || roundIndex === 2 && pairIndex === 0 ? "FOX" : "FS1";
-}
-
-function makeDate(date, groupIndex, roundIndex, pairIndex) {
-  const hours = [12, 15, 18, 21];
-  const hour = hours[(groupIndex + roundIndex + pairIndex) % hours.length];
-  return `${date}T${String(hour).padStart(2, "0")}:00:00-04:00`;
-}
-
 function formatDate(date) {
   return `${formatMonthDay(date)} at ${formatTime(date)} ${getTimezoneLabel()}`;
 }
@@ -1135,6 +1205,20 @@ function getTimezoneLabel() {
 
 function updateTimezoneLabels() {
   els.timezoneStat.textContent = getTimezoneLabel();
+}
+
+function updatePageTimestamp() {
+  els.updatedStamp.textContent = `Updated: ${formatPageUpdatedTime(new Date())}`;
+}
+
+function formatPageUpdatedTime(date) {
+  return new Intl.DateTimeFormat(getLocale(), {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short"
+  }).format(date);
 }
 
 function isCurrentOrFutureMatch(match) {
