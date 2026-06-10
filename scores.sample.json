@@ -1,0 +1,13 @@
+{
+  "matches": [
+    {
+      "id": "G19",
+      "homeTeam": "United States",
+      "awayTeam": "Paraguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "status": "FINISHED",
+      "updatedAt": "2026-06-12T23:00:00-04:00"
+    }
+  ]
+}

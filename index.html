@@ -1,8 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="yes">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="language" content="English">
     <title>World Cup 2026 Path Tracker</title>
     <link rel="stylesheet" href="styles.css">
   </head>
@@ -25,6 +26,10 @@
     </header>
 
     <main>
+      <aside class="api-disclaimer" id="apiDisclaimer">
+        Scores update when this page refreshes and depend on an external scores API. If the API is unavailable, scheduled fixtures still display.
+      </aside>
+
       <section class="hero-grid" aria-label="Tournament overview">
         <article class="focus-panel" id="focusPanel"></article>
         <article class="stat-panel">
@@ -41,7 +46,7 @@
             <span class="stat-label">matches</span>
           </div>
           <div>
-            <span class="stat-value">ET</span>
+            <span class="stat-value" id="timezoneStat">Local</span>
             <span class="stat-label">kickoffs</span>
           </div>
         </article>
@@ -78,7 +83,15 @@
               <option value="rank">FIFA Rank</option>
             </select>
           </label>
+          <label class="sort-control">
+            <span>Time</span>
+            <select id="timezoneSelect">
+              <option value="local">Local time</option>
+              <option value="utc">UTC</option>
+            </select>
+          </label>
           <button class="utility" id="selectedTeamOnly">Selected team only</button>
+          <button class="utility" id="showPreviousGames">Show previous games</button>
           <button class="utility" id="clearFilters">Clear filters</button>
         </div>
         <div class="match-list" id="matchList"></div>

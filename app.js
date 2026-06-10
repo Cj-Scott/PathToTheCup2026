@@ -195,12 +195,20 @@ const matchPairs = [
 ];
 
 const matches = buildGroupMatches().concat(buildKnockoutMatches());
+const scoreApi = {
+  provider: "proxy",
+  url: window.PATH_TO_CUP_SCORE_API_URL || "api/scores",
+  footballDataUrl: "https://api.football-data.org/v4/competitions/WC/matches"
+};
 let selectedTeam = "United States";
 let stageFilter = "all";
 let searchTerm = "";
 let selectedTeamOnly = false;
 let scheduleSortMode = "date";
 let teamSortMode = "az";
+let showPreviousGames = false;
+let scoreSyncStatus = "Scores pending refresh API";
+let timezoneMode = localStorage.getItem("timezoneMode") || "local";
 
 const els = {
   search: document.querySelector("#searchInput"),
@@ -209,8 +217,11 @@ const els = {
   matchList: document.querySelector("#matchList"),
   scheduleCount: document.querySelector("#scheduleCount"),
   sort: document.querySelector("#sortSelect"),
+  timezone: document.querySelector("#timezoneSelect"),
+  timezoneStat: document.querySelector("#timezoneStat"),
   teamSort: document.querySelector("#teamSortSelect"),
   selectedTeamOnly: document.querySelector("#selectedTeamOnly"),
+  showPreviousGames: document.querySelector("#showPreviousGames"),
   clearFilters: document.querySelector("#clearFilters"),
   groups: document.querySelector("#groupsGrid"),
   teamGrid: document.querySelector("#teamGrid"),
@@ -221,10 +232,12 @@ const els = {
 init();
 
 function init() {
+  document.documentElement.lang = navigator.language || "en";
   els.select.innerHTML = allTeams
     .map(team => `<option value="${team.name}">${team.flag} ${team.name} - FIFA #${team.ranking}</option>`)
     .join("");
   els.select.value = selectedTeam;
+  els.timezone.value = timezoneMode;
 
   document.querySelectorAll(".tab").forEach(button => {
     button.addEventListener("click", () => switchView(button.dataset.view));
@@ -249,6 +262,12 @@ function init() {
     renderSchedule();
   });
 
+  els.timezone.addEventListener("change", event => {
+    timezoneMode = event.target.value;
+    localStorage.setItem("timezoneMode", timezoneMode);
+    renderAll();
+  });
+
   els.teamSort.addEventListener("change", event => {
     teamSortMode = event.target.value;
     renderTeams();
@@ -265,14 +284,27 @@ function init() {
     renderSchedule();
   });
 
+  els.showPreviousGames.addEventListener("click", () => {
+    showPreviousGames = !showPreviousGames;
+    els.showPreviousGames.classList.toggle("active", showPreviousGames);
+    els.showPreviousGames.textContent = showPreviousGames ? "Hide previous games" : "Show previous games";
+    renderSchedule();
+  });
+
   els.clearFilters.addEventListener("click", () => {
     searchTerm = "";
     stageFilter = "all";
     selectedTeamOnly = false;
+    showPreviousGames = false;
     scheduleSortMode = "date";
+    timezoneMode = "local";
+    localStorage.setItem("timezoneMode", timezoneMode);
     els.search.value = "";
     els.sort.value = "date";
+    els.timezone.value = "local";
     els.selectedTeamOnly.classList.remove("active");
+    els.showPreviousGames.classList.remove("active");
+    els.showPreviousGames.textContent = "Show previous games";
     document.querySelectorAll("[data-filter-stage]").forEach(button => {
       button.classList.toggle("active", button.dataset.filterStage === "all");
     });
@@ -287,6 +319,7 @@ function init() {
   });
 
   renderAll();
+  refreshScores();
 }
 
 function switchView(view) {
@@ -295,6 +328,7 @@ function switchView(view) {
 }
 
 function renderAll() {
+  updateTimezoneLabels();
   renderFocus();
   renderSchedule();
   renderGroups();
@@ -304,11 +338,12 @@ function renderAll() {
 
 function renderFocus() {
   const team = teamByName[selectedTeam];
-  const next = matches.find(match => match.stage === "Group" && match.teams.includes(team.name));
+  const next = matches.find(match => match.stage === "Group" && match.teams.includes(team.name) && !hasFinalScore(match));
   const standing = getStandings(team.group).find(row => row.name === team.name);
+  const status = getTeamStatus(team.name);
 
   els.focus.innerHTML = `
-    <div class="flag" aria-hidden="true">${team.flag}</div>
+    <div class="flag ${status.key}" aria-hidden="true">${team.flag}</div>
     <div class="focus-copy">
       <p class="eyebrow">Selected path</p>
       <h2>${team.name}</h2>
@@ -316,6 +351,7 @@ function renderFocus() {
         <span class="pill">Group ${team.group}</span>
         <span class="pill">FIFA #${team.ranking}</span>
         <span class="pill">${standing.points} pts</span>
+        <span class="pill status-pill ${status.key}">${status.label}</span>
         <span class="pill">${standing.rankLabel}</span>
         <span class="pill">${team.best}</span>
       </div>
@@ -336,10 +372,11 @@ function renderSchedule() {
     ].join(" ").toLowerCase();
     const stageOk = stageFilter === "all" || (stageFilter === "Knockout" ? match.stage !== "Group" : match.stage === "Group");
     const teamOk = !selectedTeamOnly || match.teams.includes(selectedTeam);
-    return stageOk && teamOk && (!searchTerm || searchable.includes(searchTerm));
+    const timeOk = showPreviousGames || isCurrentOrFutureMatch(match);
+    return stageOk && teamOk && timeOk && (!searchTerm || searchable.includes(searchTerm));
   }).sort(compareMatches);
 
-  els.scheduleCount.textContent = `Showing ${filtered.length} of ${matches.length} matches`;
+  els.scheduleCount.textContent = `Showing ${filtered.length} of ${matches.length} matches - ${scoreSyncStatus}`;
 
   if (!filtered.length) {
     els.matchList.innerHTML = `<div class="empty">No matches match the current filter.</div>`;
@@ -352,13 +389,15 @@ function renderSchedule() {
       if (!team) return `<span>${name}</span>`;
       return `<span class="team-chip" data-tip="${escapeAttr(`${team.name}: FIFA #${team.ranking}. ${team.best}. Group ${team.group}.`)}">${team.flag} ${team.name}</span>`;
     }).join(`<span class="muted">vs</span>`);
+    const timeStatus = getMatchTimeStatus(match);
+    const scoreLine = formatScoreLine(match);
 
     return `
       <article class="match-card">
         <div class="date-box">
           <span>${formatMonthDay(match.date)}</span>
           <b>${formatTime(match.date)}</b>
-          <span>ET</span>
+          <span>${getTimezoneLabel()}</span>
         </div>
         <div class="matchup">
           <div class="teams-line">${teamLine}</div>
@@ -366,16 +405,19 @@ function renderSchedule() {
             <span>${match.round}</span>
             <span>${match.venue}</span>
             <span>${match.status}</span>
+            <span class="time-status ${timeStatus.key}">${timeStatus.label}</span>
           </div>
         </div>
         <div class="match-actions">
+          ${scoreLine ? `<span class="score-pill">${scoreLine}</span>` : ""}
           <span class="channel">${match.channel}</span>
           <button class="details-toggle" aria-label="Toggle match details">+</button>
         </div>
         <div class="match-detail">
           <div class="detail-box"><b>Broadcast</b>${match.channel} in English. Updateable per-match channel field.</div>
-          <div class="detail-box"><b>Context</b>${match.note}</div>
+          <div class="detail-box"><b>Score source</b>${match.scoreUpdatedAt ? `Updated from external API at ${formatSyncTime(match.scoreUpdatedAt)}.` : "No live score returned for this fixture yet."}</div>
           <div class="detail-box"><b>Stage impact</b>${match.impact}</div>
+          <div class="detail-box"><b>Context</b>${match.note}</div>
         </div>
       </article>
     `;
@@ -402,13 +444,13 @@ function renderGroups() {
         </summary>
         <table class="standings">
           <thead>
-            <tr><th>Team</th><th>Rk</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr>
+            <tr><th>Team</th><th>Rk</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th><th>Status</th></tr>
           </thead>
           <tbody>
             ${rows.map(row => `
-              <tr>
+              <tr class="${row.status.key}">
                 <td><span class="team-chip" data-tip="${escapeAttr(`${row.name}: FIFA #${row.ranking}. ${row.best}`)}">${row.flag} ${row.name}</span></td>
-                <td>${row.ranking}</td><td>${row.played}</td><td>${row.won}</td><td>${row.drawn}</td><td>${row.lost}</td><td>${row.gd}</td><td><b>${row.points}</b></td>
+                <td>${row.ranking}</td><td>${row.played}</td><td>${row.won}</td><td>${row.drawn}</td><td>${row.lost}</td><td>${row.gd}</td><td><b>${row.points}</b></td><td><span class="mini-status ${row.status.key}">${row.status.short}</span></td>
               </tr>
             `).join("")}
           </tbody>
@@ -421,6 +463,7 @@ function renderGroups() {
 function renderPath() {
   const team = teamByName[selectedTeam];
   const standing = getStandings(team.group).find(row => row.name === team.name);
+  const status = getTeamStatus(team.name);
   const paths = getPathCopy(team.group);
   const teamMatches = matches.filter(match => match.teams.includes(team.name));
   const optimal = getOptimalPath(team, paths);
@@ -445,9 +488,11 @@ function renderPath() {
       <div class="pill-row">
         <span class="pill">Current: ${standing.rankLabel}</span>
         <span class="pill">FIFA #${team.ranking}</span>
+        <span class="pill status-pill ${status.key}">${status.label}</span>
         <span class="pill">${team.best}</span>
       </div>
     <div class="route-steps">
+      ${status.key === "eliminated" ? `<div class="route-step eliminated"><b>Eliminated</b><span>${team.name}'s path is closed based on the available score data.</span></div>` : ""}
       <div class="route-step"><b>Optimal path</b><span>Win Group ${team.group}, avoid third-place uncertainty, and enter the Round of 32 through the cleanest bracket slot.</span></div>
       <div class="route-step"><b>Group target</b><span>Finish top two for automatic Round of 32 entry. Third place can still advance if ranked among the best eight third-place teams.</span></div>
       <div class="route-step"><b>Remaining group games</b><span>${teamMatches.map(match => `${formatMonthDay(match.date)} ${formatTime(match.date)} vs ${match.teams.find(name => name !== team.name)}`).join("; ")}</span></div>
@@ -455,31 +500,31 @@ function renderPath() {
   `;
 
   els.bracket.innerHTML = `
-    <div class="path-workbench" aria-label="${team.name} route flow">
+    <div class="path-workbench ${status.key}" aria-label="${team.name} route flow">
       <div class="workbench-bar">
         <span class="traffic-dot blue"></span>
         <span class="traffic-dot gold"></span>
         <span class="traffic-dot green"></span>
         <span class="workbench-title">path/${team.id}.cup-route</span>
-        <span class="workbench-badge">Optimal: Group winner</span>
+        <span class="workbench-badge ${status.key}">${status.key === "eliminated" ? "Path closed" : `Optimal: Group winner - ${status.label}`}</span>
       </div>
       <div class="flow-grid">
         ${optimal.map((node, index) => `
           <section class="flow-stage ${index === 1 ? "decision-stage" : ""}">
-            <div class="path-node ${node.tone}">
+            <div class="path-node ${node.tone} ${status.key}">
               <span class="node-kicker">${node.kicker}</span>
               <b>${node.title}</b>
               <p>${node.text}</p>
-              <span class="node-meta">${node.meta}</span>
+              <span class="node-meta">${status.key === "eliminated" ? "Closed" : node.meta}</span>
             </div>
             ${index === 1 ? `
               <div class="branch-stack">
                 ${branches.map(branch => `
-                  <div class="path-node ${branch.tone}">
+                  <div class="path-node ${branch.tone} ${status.key}">
                     <span class="node-kicker">${branch.status}</span>
                     <b>${branch.label}</b>
                     <p>${branch.text}</p>
-                    <span class="node-meta">Diverges from optimal group-winner route</span>
+                    <span class="node-meta">${status.key === "eliminated" ? "Closed" : "Diverges from optimal group-winner route"}</span>
                   </div>
                 `).join("")}
               </div>
@@ -497,14 +542,16 @@ function renderTeams() {
     .sort(compareTeams);
   els.teamGrid.innerHTML = filtered.map(team => {
     const standing = getStandings(team.group).find(row => row.name === team.name);
+    const status = getTeamStatus(team.name);
     return `
-      <article class="team-card" data-tip="${escapeAttr(`${team.name}: FIFA #${team.ranking}. ${team.best}. Select this team to highlight its path.`)}">
+      <article class="team-card ${status.key}" data-tip="${escapeAttr(`${team.name}: ${status.label}. FIFA #${team.ranking}. ${team.best}. Select this team to highlight its path.`)}">
         <div class="flag">${team.flag}</div>
         <h3>${team.name}</h3>
         <div class="pill-row">
           <span class="pill">Group ${team.group}</span>
           <span class="pill">FIFA #${team.ranking}</span>
           <span class="pill">${standing.points} pts</span>
+          <span class="pill status-pill ${status.key}">${status.label}</span>
           <span class="pill">${team.best}</span>
         </div>
       </article>
@@ -575,24 +622,201 @@ function buildKnockoutMatches() {
 }
 
 function getStandings(group) {
-  return groups[group].map(([name, flag, best, ranking], index) => {
-    const played = 0;
-    const points = 0;
-    return {
+  const rows = groups[group].map(([name, flag, best, ranking], index) => ({
       name,
       flag,
       best,
       ranking,
-      played,
+      played: 0,
       won: 0,
       drawn: 0,
       lost: 0,
+      gf: 0,
+      ga: 0,
       gd: 0,
-      points,
-      rankLabel: index < 2 ? "Auto-advance zone" : index === 2 ? "Third-place bubble" : "Needs points",
+      points: 0,
       sort: index
-    };
-  }).sort((a, b) => b.points - a.points || a.sort - b.sort);
+  }));
+  const rowByName = Object.fromEntries(rows.map(row => [row.name, row]));
+
+  matches
+    .filter(match => match.stage === "Group" && match.group === group && hasResultScore(match))
+    .forEach(match => {
+      const [homeName, awayName] = match.teams;
+      const home = rowByName[homeName];
+      const away = rowByName[awayName];
+      if (!home || !away) return;
+      const homeGoals = Number(match.score.home);
+      const awayGoals = Number(match.score.away);
+      home.played += 1;
+      away.played += 1;
+      home.gf += homeGoals;
+      home.ga += awayGoals;
+      away.gf += awayGoals;
+      away.ga += homeGoals;
+      if (homeGoals > awayGoals) {
+        home.won += 1;
+        away.lost += 1;
+        home.points += 3;
+      } else if (awayGoals > homeGoals) {
+        away.won += 1;
+        home.lost += 1;
+        away.points += 3;
+      } else {
+        home.drawn += 1;
+        away.drawn += 1;
+        home.points += 1;
+        away.points += 1;
+      }
+    });
+
+  rows.forEach(row => {
+    row.gd = row.gf - row.ga;
+  });
+
+  return rows
+    .sort(compareStandingTableRows)
+    .map((row, index) => ({
+      ...row,
+      rank: index + 1,
+      status: getTeamStatus(row.name),
+      rankLabel: getGroupRankLabel(row.name, index + 1)
+    }));
+}
+
+function compareStandingTableRows(a, b) {
+  return b.points - a.points || b.gd - a.gd || b.gf - a.gf || a.ranking - b.ranking || a.sort - b.sort;
+}
+
+function getGroupRankLabel(teamName, rank) {
+  const status = getTeamStatus(teamName);
+  if (status.key === "qualified" || status.key === "champion") return "Qualified";
+  if (status.key === "eliminated") return "Eliminated";
+  if (rank <= 2) return "Auto-advance zone";
+  if (rank === 3) return "Third-place bubble";
+  return "Needs points";
+}
+
+function getTeamStatus(teamName) {
+  const knockout = getKnockoutStatus(teamName);
+  if (knockout) return knockout;
+
+  const team = teamByName[teamName];
+  if (!team) return statusData("alive");
+  const rows = getRawGroupStandings(team.group);
+  const row = rows.find(item => item.name === teamName);
+  const groupDone = getGroupMatches(team.group).every(hasFinalScore);
+  const allGroupsDone = Object.keys(groups).every(group => getGroupMatches(group).every(hasFinalScore));
+  if (!row) return statusData("alive");
+
+  if (groupDone) {
+    if (row.rank <= 2) return statusData("qualified");
+    if (row.rank === 3) {
+      if (!allGroupsDone) return statusData("bubble");
+      const thirdRows = Object.keys(groups).map(group => getRawGroupStandings(group).find(item => item.rank === 3)).sort(compareStandingTableRows);
+      return thirdRows.slice(0, 8).some(item => item.name === teamName) ? statusData("qualified") : statusData("eliminated");
+    }
+    return statusData("eliminated");
+  }
+
+  if (row.rank === 4 && row.played >= 2) return statusData("at-risk");
+  if (row.rank === 3) return statusData("bubble");
+  return statusData("alive");
+}
+
+function getKnockoutStatus(teamName) {
+  const final = matches.find(match => match.round === "Final" && hasFinalScore(match) && match.teams.includes(teamName));
+  if (final) return getMatchWinner(final) === teamName ? statusData("champion") : statusData("eliminated", "Runner-up", "Runner-up");
+
+  const knockoutLoss = matches.find(match => match.stage === "Knockout" && match.round !== "Third-place match" && hasFinalScore(match) && match.teams.includes(teamName) && getMatchWinner(match) !== teamName);
+  if (knockoutLoss) return statusData("eliminated");
+
+  const knockoutWin = matches.find(match => match.stage === "Knockout" && hasFinalScore(match) && match.teams.includes(teamName) && getMatchWinner(match) === teamName);
+  if (knockoutWin) return statusData("qualified", "Advanced", "Advanced");
+  return null;
+}
+
+function getRawGroupStandings(group) {
+  const rows = groups[group].map(([name, flag, best, ranking], index) => ({
+    name,
+    flag,
+    best,
+    ranking,
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    gf: 0,
+    ga: 0,
+    gd: 0,
+    points: 0,
+    sort: index
+  }));
+  const rowByName = Object.fromEntries(rows.map(row => [row.name, row]));
+  getGroupMatches(group).filter(hasResultScore).forEach(match => {
+    const [homeName, awayName] = match.teams;
+    const home = rowByName[homeName];
+    const away = rowByName[awayName];
+    if (!home || !away) return;
+    const homeGoals = Number(match.score.home);
+    const awayGoals = Number(match.score.away);
+    home.played += 1;
+    away.played += 1;
+    home.gf += homeGoals;
+    home.ga += awayGoals;
+    away.gf += awayGoals;
+    away.ga += homeGoals;
+    if (homeGoals > awayGoals) {
+      home.won += 1;
+      away.lost += 1;
+      home.points += 3;
+    } else if (awayGoals > homeGoals) {
+      away.won += 1;
+      home.lost += 1;
+      away.points += 3;
+    } else {
+      home.drawn += 1;
+      away.drawn += 1;
+      home.points += 1;
+      away.points += 1;
+    }
+  });
+  rows.forEach(row => row.gd = row.gf - row.ga);
+  return rows.sort(compareStandingTableRows).map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+function getGroupMatches(group) {
+  return matches.filter(match => match.stage === "Group" && match.group === group);
+}
+
+function hasScore(match) {
+  return match.score && match.score.home != null && match.score.away != null;
+}
+
+function hasResultScore(match) {
+  return hasScore(match) && !["Scheduled", "Pending qualifiers"].includes(match.status);
+}
+
+function hasFinalScore(match) {
+  return hasScore(match) && match.status === "Final";
+}
+
+function getMatchWinner(match) {
+  if (!hasScore(match) || Number(match.score.home) === Number(match.score.away)) return "";
+  return Number(match.score.home) > Number(match.score.away) ? match.teams[0] : match.teams[1];
+}
+
+function statusData(key, label, short) {
+  const labels = {
+    alive: ["Alive", "Alive"],
+    "at-risk": ["At risk", "Risk"],
+    bubble: ["Third-place bubble", "Bubble"],
+    qualified: ["Qualified", "Qual."],
+    eliminated: ["Eliminated", "Out"],
+    champion: ["Champion", "Champ"]
+  };
+  const fallback = labels[key] || labels.alive;
+  return { key, label: label || fallback[0], short: short || fallback[1] };
 }
 
 function compareMatches(a, b) {
@@ -619,6 +843,129 @@ function matchSortName(match) {
 function averageMatchRank(match) {
   const ranks = match.teams.map(name => teamByName[name]?.ranking).filter(Boolean);
   return ranks.length ? ranks.reduce((total, rank) => total + rank, 0) / ranks.length : 999;
+}
+
+async function refreshScores() {
+  try {
+    scoreSyncStatus = "Checking scores...";
+    renderSchedule();
+    const updates = await fetchScoreUpdates();
+    const applied = applyScoreUpdates(updates);
+    scoreSyncStatus = applied ? `Scores refreshed: ${applied} updated` : "Scores refreshed: no updates";
+  } catch (error) {
+    scoreSyncStatus = "Scores unavailable";
+    console.warn("Score refresh failed:", error);
+  }
+  renderAll();
+}
+
+async function fetchScoreUpdates() {
+  const token = localStorage.getItem("footballDataToken");
+  if (token) {
+    const response = await fetch(scoreApi.footballDataUrl, {
+      headers: { "X-Auth-Token": token }
+    });
+    if (!response.ok) throw new Error(`football-data.org returned ${response.status}`);
+    const payload = await response.json();
+    return normalizeFootballDataScores(payload);
+  }
+
+  const response = await fetch(scoreApi.url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Score API returned ${response.status}`);
+  const payload = await response.json();
+  return normalizeProxyScores(payload);
+}
+
+function normalizeProxyScores(payload) {
+  const items = Array.isArray(payload) ? payload : payload.matches || payload.games || [];
+  return items.map(item => ({
+    id: item.id || item.matchId,
+    homeTeam: item.homeTeam || item.home || item.teams?.home,
+    awayTeam: item.awayTeam || item.away || item.teams?.away,
+    homeScore: item.homeScore ?? item.score?.home ?? item.score?.fullTime?.home,
+    awayScore: item.awayScore ?? item.score?.away ?? item.score?.fullTime?.away,
+    status: item.status || item.state,
+    updatedAt: item.updatedAt || item.lastUpdated || new Date().toISOString()
+  }));
+}
+
+function normalizeFootballDataScores(payload) {
+  return (payload.matches || []).map(item => ({
+    homeTeam: item.homeTeam?.name,
+    awayTeam: item.awayTeam?.name,
+    homeScore: item.score?.fullTime?.home ?? item.score?.regularTime?.home,
+    awayScore: item.score?.fullTime?.away ?? item.score?.regularTime?.away,
+    status: item.status,
+    updatedAt: item.lastUpdated || new Date().toISOString()
+  }));
+}
+
+function applyScoreUpdates(updates) {
+  let applied = 0;
+  updates.forEach(update => {
+    const match = findMatchForScore(update);
+    if (!match || update.homeScore == null || update.awayScore == null) return;
+    match.score = {
+      home: update.homeScore,
+      away: update.awayScore
+    };
+    match.status = formatApiStatus(update.status);
+    match.scoreUpdatedAt = update.updatedAt;
+    applied += 1;
+  });
+  return applied;
+}
+
+function findMatchForScore(update) {
+  if (update.id) {
+    const byId = matches.find(match => match.id === update.id);
+    if (byId) return byId;
+  }
+
+  return matches.find(match => {
+    const [home, away] = match.teams;
+    return namesMatch(home, update.homeTeam) && namesMatch(away, update.awayTeam);
+  });
+}
+
+function namesMatch(localName, apiName) {
+  if (!localName || !apiName) return false;
+  return normalizeTeamName(localName) === normalizeTeamName(apiName);
+}
+
+function normalizeTeamName(name) {
+  const aliases = {
+    usa: "united states",
+    usmnt: "united states",
+    "cote divoire": "ivory coast",
+    "cote d ivoire": "ivory coast",
+    "czech republic": "czechia",
+    "congo dr": "dr congo",
+    "congo democratic republic": "dr congo"
+  };
+  const normalized = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  return aliases[normalized] || normalized;
+}
+
+function formatApiStatus(status) {
+  const normalized = String(status || "").toUpperCase();
+  if (["LIVE", "IN_PLAY", "PAUSED"].includes(normalized)) return "Live";
+  if (["FINISHED", "FT"].includes(normalized)) return "Final";
+  if (["POSTPONED", "SUSPENDED", "CANCELLED"].includes(normalized)) return normalized[0] + normalized.slice(1).toLowerCase();
+  return status || "Scheduled";
+}
+
+function formatScoreLine(match) {
+  if (!match.score) return "";
+  return `${match.score.home}-${match.score.away}`;
+}
+
+function formatSyncTime(date) {
+  return new Intl.DateTimeFormat(getLocale(), {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: getDisplayTimeZone()
+  }).format(new Date(date));
 }
 
 function getOptimalPath(team, paths) {
@@ -747,15 +1094,58 @@ function makeDate(date, groupIndex, roundIndex, pairIndex) {
 }
 
 function formatDate(date) {
-  return `${formatMonthDay(date)} at ${formatTime(date)} ET`;
+  return `${formatMonthDay(date)} at ${formatTime(date)} ${getTimezoneLabel()}`;
 }
 
 function formatMonthDay(date) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(date));
+  return new Intl.DateTimeFormat(getLocale(), {
+    month: "short",
+    day: "numeric",
+    timeZone: getDisplayTimeZone()
+  }).format(new Date(date));
 }
 
 function formatTime(date) {
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).format(new Date(date));
+  return new Intl.DateTimeFormat(getLocale(), {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: getDisplayTimeZone()
+  }).format(new Date(date));
+}
+
+function getLocale() {
+  return navigator.language || "en-US";
+}
+
+function getDisplayTimeZone() {
+  if (timezoneMode === "utc") return "UTC";
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+function getTimezoneLabel() {
+  if (timezoneMode === "utc") return "UTC";
+  const zone = getDisplayTimeZone();
+  const shortName = new Intl.DateTimeFormat(getLocale(), {
+    timeZone: zone,
+    timeZoneName: "short"
+  }).formatToParts(new Date()).find(part => part.type === "timeZoneName")?.value;
+  return shortName || "Local";
+}
+
+function updateTimezoneLabels() {
+  els.timezoneStat.textContent = getTimezoneLabel();
+}
+
+function isCurrentOrFutureMatch(match) {
+  return new Date(match.date).getTime() >= Date.now() - 2 * 60 * 60 * 1000;
+}
+
+function getMatchTimeStatus(match) {
+  const start = new Date(match.date).getTime();
+  const now = Date.now();
+  if (start < now - 2 * 60 * 60 * 1000) return { key: "previous", label: "Previous" };
+  if (start <= now) return { key: "current", label: "Started within 2h" };
+  return { key: "upcoming", label: "Upcoming" };
 }
 
 function matchesSearch(...values) {
