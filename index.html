@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>World Cup 2026 Path Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">FIFA World Cup 2026</p>
+        <h1>Path to the Cup</h1>
+      </div>
+      <div class="controls" aria-label="Global controls">
+        <label class="search">
+          <span>Search</span>
+          <input id="searchInput" type="search" placeholder="Team, group, venue, channel">
+        </label>
+        <label class="select">
+          <span>Team path</span>
+          <select id="teamSelect"></select>
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero-grid" aria-label="Tournament overview">
+        <article class="focus-panel" id="focusPanel"></article>
+        <article class="stat-panel">
+          <div>
+            <span class="stat-value">48</span>
+            <span class="stat-label">teams</span>
+          </div>
+          <div>
+            <span class="stat-value">12</span>
+            <span class="stat-label">groups</span>
+          </div>
+          <div>
+            <span class="stat-value">104</span>
+            <span class="stat-label">matches</span>
+          </div>
+          <div>
+            <span class="stat-value">ET</span>
+            <span class="stat-label">kickoffs</span>
+          </div>
+        </article>
+      </section>
+
+      <nav class="tabs" aria-label="Views">
+        <button class="tab active" data-view="schedule">Schedule</button>
+        <button class="tab" data-view="groups">Groups</button>
+        <button class="tab" data-view="path">Path</button>
+        <button class="tab" data-view="teams">Teams</button>
+      </nav>
+
+      <section class="view active" id="scheduleView" aria-labelledby="scheduleTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Matches</p>
+            <h2 id="scheduleTitle">Schedule and broadcast</h2>
+          </div>
+          <p class="source-note">Seeded with current public tournament structure; scores, points, and per-match channels are ready to update as official feeds settle.</p>
+          <div class="segmented" role="group" aria-label="Schedule filters">
+            <button class="active" data-filter-stage="all">All</button>
+            <button data-filter-stage="Group">Group</button>
+            <button data-filter-stage="Knockout">Knockout</button>
+          </div>
+        </div>
+        <div class="schedule-tools">
+          <span class="count-pill" id="scheduleCount">Showing matches</span>
+          <label class="sort-control">
+            <span>Sort</span>
+            <select id="sortSelect">
+              <option value="date">Date</option>
+              <option value="az">A-Z</option>
+              <option value="za">Z-A</option>
+              <option value="rank">FIFA Rank</option>
+            </select>
+          </label>
+          <button class="utility" id="selectedTeamOnly">Selected team only</button>
+          <button class="utility" id="clearFilters">Clear filters</button>
+        </div>
+        <div class="match-list" id="matchList"></div>
+      </section>
+
+      <section class="view" id="groupsView" aria-labelledby="groupsTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Tables</p>
+            <h2 id="groupsTitle">Group standings</h2>
+          </div>
+          <button class="utility" id="collapseGroups">Collapse all</button>
+        </div>
+        <div class="groups-grid" id="groupsGrid"></div>
+      </section>
+
+      <section class="view" id="pathView" aria-labelledby="pathTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Route</p>
+            <h2 id="pathTitle">Selected team path</h2>
+          </div>
+          <p class="source-note">Round of 32 slots depend on final group rank and best third-place ranking.</p>
+        </div>
+        <div class="path-layout">
+          <div class="route-panel" id="routePanel"></div>
+          <div class="bracket" id="bracket"></div>
+        </div>
+      </section>
+
+      <section class="view" id="teamsView" aria-labelledby="teamsTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Profiles</p>
+            <h2 id="teamsTitle">Team quick cards</h2>
+          </div>
+          <label class="sort-control">
+            <span>Sort</span>
+            <select id="teamSortSelect">
+              <option value="az">A-Z</option>
+              <option value="za">Z-A</option>
+              <option value="rank">FIFA Rank</option>
+            </select>
+          </label>
+        </div>
+        <div class="team-grid" id="teamGrid"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
