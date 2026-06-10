@@ -56,7 +56,7 @@ The app sets browser language hints from `navigator.language` so built-in browse
 
 Schedule times default to your browser's local timezone. Use the `Time` selector in the Schedule toolbar to switch between local time and UTC. The selection is saved in `localStorage`.
 
-Kickoff times are stored in `app.js` as UTC ISO timestamps ending in `Z`. Local display is derived from the user's system/browser timezone with `Intl.DateTimeFormat`, so the same fixture will automatically render differently for viewers in different regions. Group-stage kickoff times were validated against published Eastern Time listings, and knockout kickoff times were normalized from published BST listings to UTC.
+Kickoff times are stored in `app.js` as UTC ISO timestamps ending in `Z`. Local display is derived from the user's system/browser timezone with `Intl.DateTimeFormat`, so the same fixture will automatically render differently for viewers in different regions. Fixtures, kickoff times, stadiums, and listed broadcast channels are validated against ESPN's FIFA World Cup schedule data.
 
 ## Live Scores
 
@@ -64,7 +64,7 @@ Scores are checked on page refresh.
 
 By default, the app calls `api/scores`, which is intended to be a small serverless proxy that returns JSON shaped like `scores.sample.json`. Do not commit paid/private API keys into `app.js`.
 
-The same refresh can also update fixtures as the tournament progresses. If the API returns known `homeTeam` / `awayTeam` names for a knockout match that still has placeholder entrants, the app replaces the placeholders with those teams. Include an app fixture `id` when possible; otherwise include the UTC `date` so the app can match a resolved knockout fixture by kickoff time.
+The same refresh can also update fixtures as the tournament progresses. If the API returns known `homeTeam` / `awayTeam` names for a knockout match that still has placeholder entrants, the app replaces the placeholders with those teams. Include an app fixture `id` when possible; otherwise include the UTC `date` so the app can match a resolved knockout fixture by kickoff time. The proxy can also send `venue`, `channel`, or `channels` to update stadium and broadcast data.
 
 ## Standings and Elimination
 

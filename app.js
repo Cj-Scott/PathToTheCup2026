@@ -73,12 +73,6 @@ const groups = {
   ]
 };
 
-const venues = [
-  "Mexico City", "Toronto", "Los Angeles", "New York/New Jersey",
-  "Dallas", "Kansas City", "Atlanta", "Seattle", "Miami", "Boston",
-  "Philadelphia", "Vancouver", "Houston", "Monterrey", "San Francisco Bay Area", "Guadalajara"
-];
-
 const confederations = {
   Mexico: "CONCACAF",
   "South Africa": "CAF",
@@ -174,113 +168,113 @@ const allTeams = Object.entries(groups).flatMap(([group, list], index) =>
 const teamByName = Object.fromEntries(allTeams.map(team => [team.name, team]));
 
 const officialGroupFixtures = [
-  ["A", "Mexico", "South Africa", "2026-06-11T19:00:00Z", "FOX"],
-  ["A", "South Korea", "Czechia", "2026-06-12T02:00:00Z", "FS1"],
-  ["B", "Canada", "Bosnia and Herzegovina", "2026-06-12T19:00:00Z", "FOX"],
-  ["D", "United States", "Paraguay", "2026-06-13T01:00:00Z", "FOX"],
-  ["B", "Qatar", "Switzerland", "2026-06-13T19:00:00Z", "FOX"],
-  ["C", "Brazil", "Morocco", "2026-06-13T22:00:00Z", "FOX"],
-  ["C", "Haiti", "Scotland", "2026-06-14T01:00:00Z", "FOX"],
-  ["D", "Australia", "Turkey", "2026-06-14T04:00:00Z", "FS1"],
-  ["E", "Germany", "Curacao", "2026-06-14T17:00:00Z", "FOX"],
-  ["F", "Netherlands", "Japan", "2026-06-14T20:00:00Z", "FOX"],
-  ["E", "Ivory Coast", "Ecuador", "2026-06-14T23:00:00Z", "FS1"],
-  ["F", "Sweden", "Tunisia", "2026-06-15T02:00:00Z", "FS1"],
-  ["H", "Spain", "Cape Verde", "2026-06-15T16:00:00Z", "FOX"],
-  ["G", "Belgium", "Egypt", "2026-06-15T19:00:00Z", "FOX"],
-  ["H", "Saudi Arabia", "Uruguay", "2026-06-15T22:00:00Z", "FS1"],
-  ["G", "Iran", "New Zealand", "2026-06-16T01:00:00Z", "FS1"],
-  ["I", "France", "Senegal", "2026-06-16T19:00:00Z", "FOX"],
-  ["I", "Iraq", "Norway", "2026-06-16T22:00:00Z", "FOX"],
-  ["J", "Argentina", "Algeria", "2026-06-17T01:00:00Z", "FOX"],
-  ["J", "Austria", "Jordan", "2026-06-17T04:00:00Z", "FS1"],
-  ["K", "Portugal", "DR Congo", "2026-06-17T17:00:00Z", "FOX"],
-  ["L", "England", "Croatia", "2026-06-17T20:00:00Z", "FOX"],
-  ["L", "Ghana", "Panama", "2026-06-17T23:00:00Z", "FS1"],
-  ["K", "Uzbekistan", "Colombia", "2026-06-18T02:00:00Z", "FS1"],
-  ["A", "Czechia", "South Africa", "2026-06-18T16:00:00Z", "FOX"],
-  ["B", "Switzerland", "Bosnia and Herzegovina", "2026-06-18T19:00:00Z", "FOX"],
-  ["B", "Canada", "Qatar", "2026-06-18T22:00:00Z", "FS1"],
-  ["A", "Mexico", "South Korea", "2026-06-19T01:00:00Z", "FOX"],
-  ["D", "United States", "Australia", "2026-06-19T19:00:00Z", "FOX"],
-  ["C", "Scotland", "Morocco", "2026-06-19T22:00:00Z", "FOX"],
-  ["C", "Brazil", "Haiti", "2026-06-20T00:30:00Z", "FOX"],
-  ["D", "Turkey", "Paraguay", "2026-06-20T03:00:00Z", "FS1"],
-  ["F", "Netherlands", "Sweden", "2026-06-20T17:00:00Z", "FOX"],
-  ["E", "Germany", "Ivory Coast", "2026-06-20T20:00:00Z", "FOX"],
-  ["E", "Ecuador", "Curacao", "2026-06-21T00:00:00Z", "FS1"],
-  ["F", "Tunisia", "Japan", "2026-06-21T04:00:00Z", "FS1"],
-  ["H", "Spain", "Saudi Arabia", "2026-06-21T16:00:00Z", "FOX"],
-  ["G", "Belgium", "Iran", "2026-06-21T19:00:00Z", "FS1"],
-  ["H", "Uruguay", "Cape Verde", "2026-06-21T22:00:00Z", "FS1"],
-  ["G", "New Zealand", "Egypt", "2026-06-22T01:00:00Z", "FS1"],
-  ["J", "Argentina", "Austria", "2026-06-22T17:00:00Z", "FOX"],
-  ["I", "France", "Iraq", "2026-06-22T21:00:00Z", "FOX"],
-  ["I", "Norway", "Senegal", "2026-06-23T00:00:00Z", "FOX"],
-  ["J", "Jordan", "Algeria", "2026-06-23T03:00:00Z", "FS1"],
-  ["K", "Portugal", "Uzbekistan", "2026-06-23T17:00:00Z", "FOX"],
-  ["L", "England", "Ghana", "2026-06-23T20:00:00Z", "FOX"],
-  ["L", "Panama", "Croatia", "2026-06-23T23:00:00Z", "FOX"],
-  ["K", "Colombia", "DR Congo", "2026-06-24T02:00:00Z", "FS1"],
-  ["B", "Bosnia and Herzegovina", "Qatar", "2026-06-24T19:00:00Z", "FOX"],
-  ["B", "Switzerland", "Canada", "2026-06-24T19:00:00Z", "FS1"],
-  ["C", "Morocco", "Haiti", "2026-06-24T22:00:00Z", "FS1"],
-  ["C", "Scotland", "Brazil", "2026-06-24T22:00:00Z", "FOX"],
-  ["A", "Czechia", "Mexico", "2026-06-25T01:00:00Z", "FS1"],
-  ["A", "South Africa", "South Korea", "2026-06-25T01:00:00Z", "FOX"],
-  ["E", "Curacao", "Ivory Coast", "2026-06-25T20:00:00Z", "FS1"],
-  ["E", "Ecuador", "Germany", "2026-06-25T20:00:00Z", "FOX"],
-  ["F", "Japan", "Sweden", "2026-06-25T23:00:00Z", "FOX"],
-  ["F", "Tunisia", "Netherlands", "2026-06-25T23:00:00Z", "FS1"],
-  ["D", "Paraguay", "Australia", "2026-06-26T02:00:00Z", "FOX"],
-  ["D", "Turkey", "United States", "2026-06-26T02:00:00Z", "FS1"],
-  ["I", "Norway", "France", "2026-06-26T19:00:00Z", "FOX"],
-  ["I", "Senegal", "Iraq", "2026-06-26T19:00:00Z", "FS1"],
-  ["H", "Cape Verde", "Saudi Arabia", "2026-06-27T00:00:00Z", "FS1"],
-  ["H", "Uruguay", "Spain", "2026-06-27T00:00:00Z", "FOX"],
-  ["G", "Egypt", "Iran", "2026-06-27T03:00:00Z", "FOX"],
-  ["G", "New Zealand", "Belgium", "2026-06-27T03:00:00Z", "FS1"],
-  ["L", "Croatia", "Ghana", "2026-06-27T21:00:00Z", "FOX"],
-  ["L", "Panama", "England", "2026-06-27T21:00:00Z", "FS1"],
-  ["K", "Colombia", "Portugal", "2026-06-27T23:30:00Z", "FOX"],
-  ["K", "DR Congo", "Uzbekistan", "2026-06-27T23:30:00Z", "FS1"],
-  ["J", "Algeria", "Austria", "2026-06-28T02:00:00Z", "FS1"],
-  ["J", "Jordan", "Argentina", "2026-06-28T02:00:00Z", "FOX"]
+  ["A", "Mexico", "South Africa", "2026-06-11T19:00:00Z", "FOX", "Estadio Banorte - Mexico City, Mexico", ["FOX","Tele","Peacock"]],
+  ["A", "South Korea", "Czechia", "2026-06-12T02:00:00Z", "FS1", "Estadio Akron - Guadalajara, Mexico", ["FS1","Tele","Peacock"]],
+  ["B", "Canada", "Bosnia and Herzegovina", "2026-06-12T19:00:00Z", "FOX", "BMO Field - Toronto, Canada", ["FOX","Tele","Peacock"]],
+  ["D", "United States", "Paraguay", "2026-06-13T01:00:00Z", "FOX", "SoFi Stadium - Inglewood, California, USA", ["FOX","Tele","Peacock"]],
+  ["B", "Qatar", "Switzerland", "2026-06-13T19:00:00Z", "FOX", "Levi's Stadium - Santa Clara, California, USA", ["FOX","Tele","Peacock"]],
+  ["C", "Brazil", "Morocco", "2026-06-13T22:00:00Z", "FOX", "MetLife Stadium - East Rutherford, New Jersey, USA", ["FOX","Tele","Peacock"]],
+  ["C", "Haiti", "Scotland", "2026-06-14T01:00:00Z", "FOX", "Gillette Stadium - Foxborough, Massachusetts, USA", ["FOX","Tele","Peacock"]],
+  ["D", "Australia", "Turkey", "2026-06-14T04:00:00Z", "FS1", "BC Place - Vancouver, Canada", ["FS1","Tele","Peacock"]],
+  ["E", "Germany", "Curacao", "2026-06-14T17:00:00Z", "FOX", "NRG Stadium - Houston, Texas, USA", ["FOX","Tele","Peacock"]],
+  ["F", "Netherlands", "Japan", "2026-06-14T20:00:00Z", "FOX", "AT&T Stadium - Arlington, Texas, USA", ["FOX","Tele","Peacock"]],
+  ["E", "Ivory Coast", "Ecuador", "2026-06-14T23:00:00Z", "FS1", "Lincoln Financial Field - Philadelphia, Pennsylvania, USA", ["FS1","Tele","Peacock"]],
+  ["F", "Sweden", "Tunisia", "2026-06-15T02:00:00Z", "FS1", "Estadio BBVA - Guadalupe, Mexico", ["FS1","Tele","Peacock"]],
+  ["H", "Spain", "Cape Verde", "2026-06-15T16:00:00Z", "FOX", "Mercedes-Benz Stadium - Atlanta, Georgia, USA", ["FOX","Tele","Peacock"]],
+  ["G", "Belgium", "Egypt", "2026-06-15T19:00:00Z", "FOX", "Lumen Field - Seattle, Washington, USA", ["FOX","Tele","Peacock"]],
+  ["H", "Saudi Arabia", "Uruguay", "2026-06-15T22:00:00Z", "FS1", "Hard Rock Stadium - Miami Gardens, Florida, USA", ["FS1","Tele","Peacock"]],
+  ["G", "Iran", "New Zealand", "2026-06-16T01:00:00Z", "FS1", "SoFi Stadium - Inglewood, California, USA", ["FS1","Tele","Peacock"]],
+  ["I", "France", "Senegal", "2026-06-16T19:00:00Z", "FOX", "MetLife Stadium - East Rutherford, New Jersey, USA", ["FOX","Tele","Peacock"]],
+  ["I", "Iraq", "Norway", "2026-06-16T22:00:00Z", "FOX", "Gillette Stadium - Foxborough, Massachusetts, USA", ["FOX","Tele","Peacock"]],
+  ["J", "Argentina", "Algeria", "2026-06-17T01:00:00Z", "FOX", "GEHA Field at Arrowhead Stadium - Kansas City, Missouri, USA", ["FOX","Tele","Peacock"]],
+  ["J", "Austria", "Jordan", "2026-06-17T04:00:00Z", "FS1", "Levi's Stadium - Santa Clara, California, USA", ["FS1","Tele","Peacock"]],
+  ["K", "Portugal", "DR Congo", "2026-06-17T17:00:00Z", "FOX", "NRG Stadium - Houston, Texas, USA", ["FOX","Tele","Peacock"]],
+  ["L", "England", "Croatia", "2026-06-17T20:00:00Z", "FOX", "AT&T Stadium - Arlington, Texas, USA", ["FOX","Tele","Peacock"]],
+  ["L", "Ghana", "Panama", "2026-06-17T23:00:00Z", "FS1", "BMO Field - Toronto, Canada", ["FS1","Tele","Peacock"]],
+  ["K", "Uzbekistan", "Colombia", "2026-06-18T02:00:00Z", "FS1", "Estadio Banorte - Mexico City, Mexico", ["FS1","Tele","Peacock"]],
+  ["A", "Czechia", "South Africa", "2026-06-18T16:00:00Z", "FOX", "Mercedes-Benz Stadium - Atlanta, Georgia, USA", ["FOX","Tele","Peacock"]],
+  ["B", "Switzerland", "Bosnia and Herzegovina", "2026-06-18T19:00:00Z", "FOX", "SoFi Stadium - Inglewood, California, USA", ["FOX","Tele","Peacock"]],
+  ["B", "Canada", "Qatar", "2026-06-18T22:00:00Z", "FS1", "BC Place - Vancouver, Canada", ["FS1","Tele","Peacock"]],
+  ["A", "Mexico", "South Korea", "2026-06-19T01:00:00Z", "FOX", "Estadio Akron - Guadalajara, Mexico", ["FOX","Tele","Peacock"]],
+  ["D", "United States", "Australia", "2026-06-19T19:00:00Z", "FOX", "Lumen Field - Seattle, Washington, USA", ["FOX","Tele","Peacock"]],
+  ["C", "Scotland", "Morocco", "2026-06-19T22:00:00Z", "FOX", "Gillette Stadium - Foxborough, Massachusetts, USA", ["FOX","Tele","Peacock"]],
+  ["C", "Brazil", "Haiti", "2026-06-20T00:30:00Z", "FOX", "Lincoln Financial Field - Philadelphia, Pennsylvania, USA", ["FOX","Tele","Peacock"]],
+  ["D", "Turkey", "Paraguay", "2026-06-20T03:00:00Z", "FS1", "Levi's Stadium - Santa Clara, California, USA", ["FS1","Tele","Peacock"]],
+  ["F", "Netherlands", "Sweden", "2026-06-20T17:00:00Z", "FOX", "NRG Stadium - Houston, Texas, USA", ["FOX","Tele","Peacock"]],
+  ["E", "Germany", "Ivory Coast", "2026-06-20T20:00:00Z", "FOX", "BMO Field - Toronto, Canada", ["FOX","Tele","Peacock"]],
+  ["E", "Ecuador", "Curacao", "2026-06-21T00:00:00Z", "FS1", "GEHA Field at Arrowhead Stadium - Kansas City, Missouri, USA", ["FS1","Tele","Peacock"]],
+  ["F", "Tunisia", "Japan", "2026-06-21T04:00:00Z", "FS1", "Estadio BBVA - Guadalupe, Mexico", ["FS1","Tele","Peacock"]],
+  ["H", "Spain", "Saudi Arabia", "2026-06-21T16:00:00Z", "FOX", "Mercedes-Benz Stadium - Atlanta, Georgia, USA", ["FOX","Tele","Peacock"]],
+  ["G", "Belgium", "Iran", "2026-06-21T19:00:00Z", "FS1", "SoFi Stadium - Inglewood, California, USA", ["FS1","Tele","Peacock"]],
+  ["H", "Uruguay", "Cape Verde", "2026-06-21T22:00:00Z", "FS1", "Hard Rock Stadium - Miami Gardens, Florida, USA", ["FS1","Tele","Peacock"]],
+  ["G", "New Zealand", "Egypt", "2026-06-22T01:00:00Z", "FS1", "BC Place - Vancouver, Canada", ["FS1","Tele","Peacock"]],
+  ["J", "Argentina", "Austria", "2026-06-22T17:00:00Z", "FOX", "AT&T Stadium - Arlington, Texas, USA", ["FOX","Tele","Peacock"]],
+  ["I", "France", "Iraq", "2026-06-22T21:00:00Z", "FOX", "Lincoln Financial Field - Philadelphia, Pennsylvania, USA", ["FOX","Tele","Peacock"]],
+  ["I", "Norway", "Senegal", "2026-06-23T00:00:00Z", "FOX", "MetLife Stadium - East Rutherford, New Jersey, USA", ["FOX","Tele","Peacock"]],
+  ["J", "Jordan", "Algeria", "2026-06-23T03:00:00Z", "FS1", "Levi's Stadium - Santa Clara, California, USA", ["FS1","Tele","Peacock"]],
+  ["K", "Portugal", "Uzbekistan", "2026-06-23T17:00:00Z", "FOX", "NRG Stadium - Houston, Texas, USA", ["FOX","Tele","Peacock"]],
+  ["L", "England", "Ghana", "2026-06-23T20:00:00Z", "FOX", "Gillette Stadium - Foxborough, Massachusetts, USA", ["FOX","Tele","Peacock"]],
+  ["L", "Panama", "Croatia", "2026-06-23T23:00:00Z", "FOX", "BMO Field - Toronto, Canada", ["FOX","Tele","Peacock"]],
+  ["K", "Colombia", "DR Congo", "2026-06-24T02:00:00Z", "FS1", "Estadio Akron - Guadalajara, Mexico", ["FS1","Tele","Peacock"]],
+  ["B", "Bosnia and Herzegovina", "Qatar", "2026-06-24T19:00:00Z", "FS1", "Lumen Field - Seattle, Washington, USA", ["FS1","Tele","Peacock"]],
+  ["B", "Switzerland", "Canada", "2026-06-24T19:00:00Z", "FOX", "BC Place - Vancouver, Canada", ["FOX","Tele","Peacock"]],
+  ["C", "Morocco", "Haiti", "2026-06-24T22:00:00Z", "FS1", "Mercedes-Benz Stadium - Atlanta, Georgia, USA", ["FS1","Tele","Peacock"]],
+  ["C", "Scotland", "Brazil", "2026-06-24T22:00:00Z", "FOX", "Hard Rock Stadium - Miami Gardens, Florida, USA", ["FOX","Tele","Peacock"]],
+  ["A", "Czechia", "Mexico", "2026-06-25T01:00:00Z", "FOX", "Estadio Banorte - Mexico City, Mexico", ["FOX","Tele","Peacock"]],
+  ["A", "South Africa", "South Korea", "2026-06-25T01:00:00Z", "FS1", "Estadio BBVA - Guadalupe, Mexico", ["FS1","Tele","Peacock"]],
+  ["E", "Curacao", "Ivory Coast", "2026-06-25T20:00:00Z", "FS1", "Lincoln Financial Field - Philadelphia, Pennsylvania, USA", ["FS1","Tele","Peacock"]],
+  ["E", "Ecuador", "Germany", "2026-06-25T20:00:00Z", "FOX", "MetLife Stadium - East Rutherford, New Jersey, USA", ["FOX","Tele","Peacock"]],
+  ["F", "Japan", "Sweden", "2026-06-25T23:00:00Z", "FS1", "AT&T Stadium - Arlington, Texas, USA", ["FS1","Tele","Peacock"]],
+  ["F", "Tunisia", "Netherlands", "2026-06-25T23:00:00Z", "FOX", "GEHA Field at Arrowhead Stadium - Kansas City, Missouri, USA", ["FOX","Tele","Peacock"]],
+  ["D", "Paraguay", "Australia", "2026-06-26T02:00:00Z", "FS1", "Levi's Stadium - Santa Clara, California, USA", ["FS1","Tele","Peacock"]],
+  ["D", "Turkey", "United States", "2026-06-26T02:00:00Z", "FOX", "SoFi Stadium - Inglewood, California, USA", ["FOX","Tele","Peacock"]],
+  ["I", "Norway", "France", "2026-06-26T19:00:00Z", "FOX", "Gillette Stadium - Foxborough, Massachusetts, USA", ["FOX","Tele","Peacock"]],
+  ["I", "Senegal", "Iraq", "2026-06-26T19:00:00Z", "FS1", "BMO Field - Toronto, Canada", ["FS1","Tele","Peacock"]],
+  ["H", "Cape Verde", "Saudi Arabia", "2026-06-27T00:00:00Z", "FS1", "NRG Stadium - Houston, Texas, USA", ["FS1","Tele","Peacock"]],
+  ["H", "Uruguay", "Spain", "2026-06-27T00:00:00Z", "FOX", "Estadio Akron - Guadalajara, Mexico", ["FOX","Tele","Peacock"]],
+  ["G", "Egypt", "Iran", "2026-06-27T03:00:00Z", "FS1", "Lumen Field - Seattle, Washington, USA", ["FS1","Tele","Peacock"]],
+  ["G", "New Zealand", "Belgium", "2026-06-27T03:00:00Z", "FOX", "BC Place - Vancouver, Canada", ["FOX","Tele","Peacock"]],
+  ["L", "Croatia", "Ghana", "2026-06-27T21:00:00Z", "FS1", "Lincoln Financial Field - Philadelphia, Pennsylvania, USA", ["FS1","Tele","Peacock"]],
+  ["L", "Panama", "England", "2026-06-27T21:00:00Z", "FOX", "MetLife Stadium - East Rutherford, New Jersey, USA", ["FOX","Tele","Peacock"]],
+  ["K", "Colombia", "Portugal", "2026-06-27T23:30:00Z", "FOX", "Hard Rock Stadium - Miami Gardens, Florida, USA", ["FOX","Tele","Peacock"]],
+  ["K", "DR Congo", "Uzbekistan", "2026-06-27T23:30:00Z", "FS1", "Mercedes-Benz Stadium - Atlanta, Georgia, USA", ["FS1","Tele","Peacock"]],
+  ["J", "Algeria", "Austria", "2026-06-28T02:00:00Z", "FS1", "GEHA Field at Arrowhead Stadium - Kansas City, Missouri, USA", ["FS1","Tele","Peacock"]],
+  ["J", "Jordan", "Argentina", "2026-06-28T02:00:00Z", "FOX", "AT&T Stadium - Arlington, Texas, USA", ["FOX","Tele","Peacock"]]
 ];
 
 const knockoutScheduleUtc = [
-  ["Round of 32", "2026-06-28T19:00:00Z", 1],
-  ["Round of 32", "2026-06-29T17:00:00Z", 1],
-  ["Round of 32", "2026-06-29T20:30:00Z", 1],
-  ["Round of 32", "2026-06-30T01:00:00Z", 1],
-  ["Round of 32", "2026-06-30T17:00:00Z", 1],
-  ["Round of 32", "2026-06-30T21:00:00Z", 1],
-  ["Round of 32", "2026-07-01T01:00:00Z", 1],
-  ["Round of 32", "2026-07-01T16:00:00Z", 1],
-  ["Round of 32", "2026-07-01T20:00:00Z", 1],
-  ["Round of 32", "2026-07-02T00:00:00Z", 1],
-  ["Round of 32", "2026-07-02T19:00:00Z", 1],
-  ["Round of 32", "2026-07-02T23:00:00Z", 1],
-  ["Round of 32", "2026-07-03T03:00:00Z", 1],
-  ["Round of 32", "2026-07-03T18:00:00Z", 1],
-  ["Round of 32", "2026-07-03T22:00:00Z", 1],
-  ["Round of 32", "2026-07-04T01:30:00Z", 1],
-  ["Round of 16", "2026-07-04T17:00:00Z", 1],
-  ["Round of 16", "2026-07-04T21:00:00Z", 1],
-  ["Round of 16", "2026-07-05T20:00:00Z", 1],
-  ["Round of 16", "2026-07-06T00:00:00Z", 1],
-  ["Round of 16", "2026-07-06T19:00:00Z", 1],
-  ["Round of 16", "2026-07-07T00:00:00Z", 1],
-  ["Round of 16", "2026-07-07T16:00:00Z", 1],
-  ["Round of 16", "2026-07-07T20:00:00Z", 1],
-  ["Quarter-final", "2026-07-09T20:00:00Z", 1],
-  ["Quarter-final", "2026-07-10T19:00:00Z", 1],
-  ["Quarter-final", "2026-07-11T21:00:00Z", 1],
-  ["Quarter-final", "2026-07-12T01:00:00Z", 1],
-  ["Semi-final", "2026-07-14T19:00:00Z", 1],
-  ["Semi-final", "2026-07-15T19:00:00Z", 1],
-  ["Third-place match", "2026-07-18T21:00:00Z", 1],
-  ["Final", "2026-07-19T19:00:00Z", 1]
+  ["Round of 32", "2026-06-28T19:00:00Z", "FOX", "SoFi Stadium - Inglewood, California, USA", ["FOX","Tele","Peacock"], "Group A 2nd Place", "Group B 2nd Place"],
+  ["Round of 32", "2026-06-29T17:00:00Z", "FOX", "NRG Stadium - Houston, Texas, USA", ["FOX","Tele","Peacock"], "Group C Winner", "Group F 2nd Place"],
+  ["Round of 32", "2026-06-29T20:30:00Z", "FOX", "Gillette Stadium - Foxborough, Massachusetts, USA", ["FOX","Tele","Peacock"], "Group E Winner", "Third Place Group A/B/C/D/F"],
+  ["Round of 32", "2026-06-30T01:00:00Z", "FOX", "Estadio BBVA - Guadalupe, Mexico", ["FOX","Tele","Peacock"], "Group F Winner", "Group C 2nd Place"],
+  ["Round of 32", "2026-06-30T17:00:00Z", "FOX", "AT&T Stadium - Arlington, Texas, USA", ["FOX","Tele","Peacock"], "Group E 2nd Place", "Group I 2nd Place"],
+  ["Round of 32", "2026-06-30T21:00:00Z", "FOX", "MetLife Stadium - East Rutherford, New Jersey, USA", ["FOX","Tele","Peacock"], "Group I Winner", "Third Place Group C/D/F/G/H"],
+  ["Round of 32", "2026-07-01T01:00:00Z", "FOX", "Estadio Banorte - Mexico City, Mexico", ["FOX","Tele","Peacock"], "Group A Winner", "Third Place Group C/E/F/H/I"],
+  ["Round of 32", "2026-07-01T16:00:00Z", "FOX", "Mercedes-Benz Stadium - Atlanta, Georgia, USA", ["FOX","Tele","Peacock"], "Group L Winner", "Third Place Group E/H/I/J/K"],
+  ["Round of 32", "2026-07-01T20:00:00Z", "FS1", "Lumen Field - Seattle, Washington, USA", ["FS1","Tele","Peacock"], "Group G Winner", "Third Place Group A/E/H/I/J"],
+  ["Round of 32", "2026-07-02T00:00:00Z", "FOX", "Levi's Stadium - Santa Clara, California, USA", ["FOX","Tele","Peacock"], "Group D Winner", "Third Place Group B/E/F/I/J"],
+  ["Round of 32", "2026-07-02T19:00:00Z", "FOX", "SoFi Stadium - Inglewood, California, USA", ["FOX","Tele","Peacock"], "Group H Winner", "Group J 2nd Place"],
+  ["Round of 32", "2026-07-02T23:00:00Z", "FOX", "BMO Field - Toronto, Canada", ["FOX","Tele","Peacock"], "Group K 2nd Place", "Group L 2nd Place"],
+  ["Round of 32", "2026-07-03T03:00:00Z", "FS1", "BC Place - Vancouver, Canada", ["FS1","Tele","Peacock"], "Group B Winner", "Third Place Group E/F/G/I/J"],
+  ["Round of 32", "2026-07-03T18:00:00Z", "FOX", "AT&T Stadium - Arlington, Texas, USA", ["FOX","Tele","Peacock"], "Group D 2nd Place", "Group G 2nd Place"],
+  ["Round of 32", "2026-07-03T22:00:00Z", "FOX", "Hard Rock Stadium - Miami Gardens, Florida, USA", ["FOX","Tele","Peacock"], "Group J Winner", "Group H 2nd Place"],
+  ["Round of 32", "2026-07-04T01:30:00Z", "FOX", "GEHA Field at Arrowhead Stadium - Kansas City, Missouri, USA", ["FOX","Tele","Peacock"], "Group K Winner", "Third Place Group D/E/I/J/L"],
+  ["Round of 16", "2026-07-04T17:00:00Z", "FOX", "NRG Stadium - Houston, Texas, USA", ["FOX","Tele","Peacock"], "Round of 32 1 Winner", "Round of 32 3 Winner"],
+  ["Round of 16", "2026-07-04T21:00:00Z", "FOX", "Lincoln Financial Field - Philadelphia, Pennsylvania, USA", ["FOX","Tele","Peacock"], "Round of 32 2 Winner", "Round of 32 5 Winner"],
+  ["Round of 16", "2026-07-05T20:00:00Z", "FOX", "MetLife Stadium - East Rutherford, New Jersey, USA", ["FOX","Tele","Peacock"], "Round of 32 4 Winner", "Round of 32 6 Winner"],
+  ["Round of 16", "2026-07-06T00:00:00Z", "FOX", "Estadio Banorte - Mexico City, Mexico", ["FOX","Tele","Peacock"], "Round of 32 7 Winner", "Round of 32 8 Winner"],
+  ["Round of 16", "2026-07-06T19:00:00Z", "FOX", "AT&T Stadium - Arlington, Texas, USA", ["FOX","Tele","Peacock"], "Round of 32 11 Winner", "Round of 32 12 Winner"],
+  ["Round of 16", "2026-07-07T00:00:00Z", "FOX", "Lumen Field - Seattle, Washington, USA", ["FOX","Tele","Peacock"], "Round of 32 9 Winner", "Round of 32 10 Winner"],
+  ["Round of 16", "2026-07-07T16:00:00Z", "FOX", "Mercedes-Benz Stadium - Atlanta, Georgia, USA", ["FOX","Tele","Peacock"], "Round of 32 14 Winner", "Round of 32 16 Winner"],
+  ["Round of 16", "2026-07-07T20:00:00Z", "FOX", "BC Place - Vancouver, Canada", ["FOX","Tele","Peacock"], "Round of 32 13 Winner", "Round of 32 15 Winner"],
+  ["Quarter-final", "2026-07-09T20:00:00Z", "FOX", "Gillette Stadium - Foxborough, Massachusetts, USA", ["FOX","Tele","Peacock"], "Round of 16 1 Winner", "Round of 16 2 Winner"],
+  ["Quarter-final", "2026-07-10T19:00:00Z", "FOX", "SoFi Stadium - Inglewood, California, USA", ["FOX","Tele","Peacock"], "Round of 16 5 Winner", "Round of 16 6 Winner"],
+  ["Quarter-final", "2026-07-11T21:00:00Z", "FOX", "Hard Rock Stadium - Miami Gardens, Florida, USA", ["FOX","Tele","Peacock"], "Round of 16 3 Winner", "Round of 16 4 Winner"],
+  ["Quarter-final", "2026-07-12T01:00:00Z", "FOX", "GEHA Field at Arrowhead Stadium - Kansas City, Missouri, USA", ["FOX","Tele","Peacock"], "Round of 16 7 Winner", "Round of 16 8 Winner"],
+  ["Semi-final", "2026-07-14T19:00:00Z", "FOX", "AT&T Stadium - Arlington, Texas, USA", ["FOX","Tele","Peacock"], "Quarterfinal 1 Winner", "Quarterfinal 2 Winner"],
+  ["Semi-final", "2026-07-15T19:00:00Z", "FOX", "Mercedes-Benz Stadium - Atlanta, Georgia, USA", ["FOX","Tele","Peacock"], "Quarterfinal 3 Winner", "Quarterfinal 4 Winner"],
+  ["Third-place match", "2026-07-18T21:00:00Z", "FOX", "Hard Rock Stadium - Miami Gardens, Florida, USA", ["FOX","Tele","Peacock"], "Semifinal 1 Loser", "Semifinal 2 Loser"],
+  ["Final", "2026-07-19T19:00:00Z", "FOX", "MetLife Stadium - East Rutherford, New Jersey, USA", ["FOX","Tele","Peacock"], "Semifinal 1 Winner", "Semifinal 2 Winner"]
 ];
 
 const matches = buildGroupMatches().concat(buildKnockoutMatches());
@@ -502,11 +496,11 @@ function renderSchedule() {
         </div>
         <div class="match-actions">
           ${scoreLine ? `<span class="score-pill">${scoreLine}</span>` : ""}
-          <span class="channel">${match.channel}</span>
+          <span class="channel" data-tip="${escapeAttr(`ESPN listed channels: ${formatChannelList(match)}`)}">${match.channel}</span>
           <button class="details-toggle" aria-label="Toggle match details">+</button>
         </div>
         <div class="match-detail">
-          <div class="detail-box"><b>Broadcast</b>${match.channel} in English. Updateable per-match channel field.</div>
+          <div class="detail-box"><b>Broadcast</b>Primary: ${match.channel}. ESPN listed: ${formatChannelList(match)}.</div>
           <div class="detail-box"><b>Score source</b>${match.scoreUpdatedAt ? `Updated from external API at ${formatSyncTime(match.scoreUpdatedAt)}.` : "No live score returned for this fixture yet."}</div>
           <div class="detail-box"><b>Stage impact</b>${match.impact}</div>
           <div class="detail-box"><b>Context</b>${match.note}</div>
@@ -662,7 +656,7 @@ function renderTeams() {
 
 function buildGroupMatches() {
   const groupMatchCounts = {};
-  return officialGroupFixtures.map(([group, home, away, date, channel], index) => {
+  return officialGroupFixtures.map(([group, home, away, date, channel, venue, channels], index) => {
     groupMatchCounts[group] = (groupMatchCounts[group] || 0) + 1;
     const teams = [home, away];
     const matchday = Math.ceil(groupMatchCounts[group] / 2);
@@ -673,8 +667,9 @@ function buildGroupMatches() {
       group,
       teams,
       date,
-      venue: venues[index % venues.length],
+      venue,
       channel,
+      channels,
       status: "Scheduled",
       note: buildMatchContext(teams, group),
       impact: "Three points for a win, one for a draw. Top two advance; eight third-place teams also qualify."
@@ -684,7 +679,7 @@ function buildGroupMatches() {
 
 function buildKnockoutMatches() {
   const roundCounts = {};
-  return knockoutScheduleUtc.map(([round, date], index) => {
+  return knockoutScheduleUtc.map(([round, date, channel, venue, channels, homeSlot, awaySlot], index) => {
     roundCounts[round] = (roundCounts[round] || 0) + 1;
     const matchNumber = roundCounts[round];
     return {
@@ -692,10 +687,11 @@ function buildKnockoutMatches() {
       stage: "Knockout",
       round,
       group: "",
-      teams: [`${round} entrant ${matchNumber}A`, `${round} entrant ${matchNumber}B`],
+      teams: [homeSlot || `${round} entrant ${matchNumber}A`, awaySlot || `${round} entrant ${matchNumber}B`],
       date,
-      venue: venues[index % venues.length],
-      channel: round === "Final" || round === "Semi-final" || round === "Third-place match" ? "FOX" : index % 3 === 0 ? "FOX" : "FS1",
+      venue,
+      channel,
+      channels,
       status: "Pending qualifiers",
       note: "Team names populate as the bracket is resolved.",
       impact: "Single-elimination match. Extra time and penalties decide tied knockout games."
@@ -965,6 +961,9 @@ function normalizeProxyScores(payload) {
     homeTeam: item.homeTeam || item.home || item.teams?.home,
     awayTeam: item.awayTeam || item.away || item.teams?.away,
     date: item.date || item.utcDate || item.kickoff || item.startTime || item.startDate,
+    venue: item.venue?.fullName || item.venue?.name || item.venue,
+    channel: item.channel,
+    channels: item.channels || item.broadcasts,
     homeScore: item.homeScore ?? item.score?.home ?? item.score?.fullTime?.home,
     awayScore: item.awayScore ?? item.score?.away ?? item.score?.fullTime?.away,
     status: item.status || item.state,
@@ -977,6 +976,7 @@ function normalizeFootballDataScores(payload) {
     homeTeam: item.homeTeam?.name,
     awayTeam: item.awayTeam?.name,
     date: item.utcDate,
+    venue: item.venue,
     homeScore: item.score?.fullTime?.home ?? item.score?.regularTime?.home,
     awayScore: item.score?.fullTime?.away ?? item.score?.regularTime?.away,
     status: item.status,
@@ -995,6 +995,10 @@ function applyScoreUpdates(updates) {
     if (!match) return;
 
     if (updateMatchTeams(match, update)) {
+      result.fixtures += 1;
+    }
+
+    if (updateMatchVenueAndChannels(match, update)) {
       result.fixtures += 1;
     }
 
@@ -1058,6 +1062,26 @@ function updateMatchTeams(match, update) {
   return true;
 }
 
+function updateMatchVenueAndChannels(match, update) {
+  let changed = false;
+  if (update.venue && match.venue !== update.venue) {
+    match.venue = update.venue;
+    changed = true;
+  }
+  const channels = normalizeChannels(update.channels || update.channel);
+  if (channels.length && channels.join("|") !== (match.channels || []).join("|")) {
+    match.channels = channels;
+    match.channel = channels[0];
+    changed = true;
+  }
+  return changed;
+}
+
+function normalizeChannels(value) {
+  if (!value) return [];
+  return (Array.isArray(value) ? value : String(value).split(/[,/]/)).map(item => String(item).trim()).filter(Boolean);
+}
+
 function hasPlaceholderTeam(match) {
   return match.teams.some(isPlaceholderTeam);
 }
@@ -1114,6 +1138,10 @@ function formatApiStatus(status) {
 function formatScoreLine(match) {
   if (!match.score) return "";
   return `${match.score.home}-${match.score.away}`;
+}
+
+function formatChannelList(match) {
+  return (match.channels?.length ? match.channels : [match.channel]).filter(Boolean).join(", ");
 }
 
 function formatSyncTime(date) {

@@ -5,6 +5,8 @@
       "homeTeam": "United States",
       "awayTeam": "Paraguay",
       "date": "2026-06-13T01:00:00Z",
+      "venue": "SoFi Stadium - Inglewood, California, USA",
+      "channels": ["FOX", "Tele", "Peacock"],
       "homeScore": 2,
       "awayScore": 1,
       "status": "FINISHED",
@@ -15,6 +17,8 @@
       "homeTeam": "Mexico",
       "awayTeam": "Canada",
       "date": "2026-06-28T19:00:00Z",
+      "venue": "SoFi Stadium - Inglewood, California, USA",
+      "channels": ["FOX", "Tele", "Peacock"],
       "status": "TIMED",
       "updatedAt": "2026-06-28T12:00:00Z"
     }
