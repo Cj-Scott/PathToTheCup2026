@@ -919,7 +919,7 @@ function compareStandingRows(a, b) {
 }
 
 function matchSortName(match) {
-  return match.teams.map(name => name.replace(/^(Round of 32|Round of 16|Quarter-final|Semi-final|Third-place match|Final) slot /, "zz slot ")).sort().join(" ");
+  return match.teams.map(name => isPlaceholderTeam(name) ? `zz ${name}` : name).sort().join(" ");
 }
 
 function averageMatchRank(match) {
@@ -932,8 +932,8 @@ async function refreshScores() {
     scoreSyncStatus = "Checking scores...";
     renderSchedule();
     const updates = await fetchScoreUpdates();
-    const applied = applyScoreUpdates(updates);
-    scoreSyncStatus = applied ? `Scores refreshed: ${applied} updated` : "Scores refreshed: no updates";
+    const result = applyScoreUpdates(updates);
+    scoreSyncStatus = formatScoreSyncStatus(result);
   } catch (error) {
     scoreSyncStatus = "Scores unavailable";
     console.warn("Score refresh failed:", error);
@@ -964,6 +964,7 @@ function normalizeProxyScores(payload) {
     id: item.id || item.matchId,
     homeTeam: item.homeTeam || item.home || item.teams?.home,
     awayTeam: item.awayTeam || item.away || item.teams?.away,
+    date: item.date || item.utcDate || item.kickoff || item.startTime || item.startDate,
     homeScore: item.homeScore ?? item.score?.home ?? item.score?.fullTime?.home,
     awayScore: item.awayScore ?? item.score?.away ?? item.score?.fullTime?.away,
     status: item.status || item.state,
@@ -975,6 +976,7 @@ function normalizeFootballDataScores(payload) {
   return (payload.matches || []).map(item => ({
     homeTeam: item.homeTeam?.name,
     awayTeam: item.awayTeam?.name,
+    date: item.utcDate,
     homeScore: item.score?.fullTime?.home ?? item.score?.regularTime?.home,
     awayScore: item.score?.fullTime?.away ?? item.score?.regularTime?.away,
     status: item.status,
@@ -983,19 +985,43 @@ function normalizeFootballDataScores(payload) {
 }
 
 function applyScoreUpdates(updates) {
-  let applied = 0;
+  const result = {
+    scores: 0,
+    fixtures: 0,
+    statuses: 0
+  };
   updates.forEach(update => {
     const match = findMatchForScore(update);
-    if (!match || update.homeScore == null || update.awayScore == null) return;
-    match.score = {
-      home: update.homeScore,
-      away: update.awayScore
-    };
-    match.status = formatApiStatus(update.status);
-    match.scoreUpdatedAt = update.updatedAt;
-    applied += 1;
+    if (!match) return;
+
+    if (updateMatchTeams(match, update)) {
+      result.fixtures += 1;
+    }
+
+    if (update.homeScore != null && update.awayScore != null) {
+      match.score = {
+        home: update.homeScore,
+        away: update.awayScore
+      };
+      match.scoreUpdatedAt = update.updatedAt;
+      result.scores += 1;
+    }
+
+    const status = formatApiStatus(update.status);
+    if (status && match.status !== status) {
+      match.status = status;
+      result.statuses += 1;
+    }
   });
-  return applied;
+  return result;
+}
+
+function formatScoreSyncStatus(result) {
+  const parts = [];
+  if (result.scores) parts.push(`${result.scores} scores`);
+  if (result.fixtures) parts.push(`${result.fixtures} fixtures`);
+  if (result.statuses) parts.push(`${result.statuses} statuses`);
+  return parts.length ? `Scores refreshed: ${parts.join(", ")} updated` : "Scores refreshed: no updates";
 }
 
 function findMatchForScore(update) {
@@ -1007,7 +1033,50 @@ function findMatchForScore(update) {
   return matches.find(match => {
     const [home, away] = match.teams;
     return namesMatch(home, update.homeTeam) && namesMatch(away, update.awayTeam);
-  });
+  }) || findMatchByKickoffForFixtureUpdate(update);
+}
+
+function findMatchByKickoffForFixtureUpdate(update) {
+  if (!update.date || !isKnownTeamName(update.homeTeam) || !isKnownTeamName(update.awayTeam)) return null;
+  const kickoff = new Date(update.date).getTime();
+  if (Number.isNaN(kickoff)) return null;
+  const candidates = matches.filter(match =>
+    match.stage === "Knockout" &&
+    hasPlaceholderTeam(match) &&
+    Math.abs(new Date(match.date).getTime() - kickoff) < 60 * 1000
+  );
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+function updateMatchTeams(match, update) {
+  if (!isKnownTeamName(update.homeTeam) || !isKnownTeamName(update.awayTeam)) return false;
+  const teams = [canonicalTeamName(update.homeTeam), canonicalTeamName(update.awayTeam)];
+  if (!hasPlaceholderTeam(match) && match.teams.every((team, index) => team === teams[index])) return false;
+  if (!hasPlaceholderTeam(match) && !teamsMatchIgnoringOrder(match.teams, teams)) return false;
+  match.teams = teams;
+  match.note = match.stage === "Group" ? buildMatchContext(teams, match.group) : "Fixture teams updated from the external API as the bracket was resolved.";
+  return true;
+}
+
+function hasPlaceholderTeam(match) {
+  return match.teams.some(isPlaceholderTeam);
+}
+
+function isPlaceholderTeam(name) {
+  return /entrant|slot|winner|place|pending/i.test(name);
+}
+
+function isKnownTeamName(name) {
+  return Boolean(canonicalTeamName(name));
+}
+
+function canonicalTeamName(name) {
+  if (!name) return "";
+  return allTeams.find(team => normalizeTeamName(team.name) === normalizeTeamName(name))?.name || "";
+}
+
+function teamsMatchIgnoringOrder(first, second) {
+  return first.map(normalizeTeamName).sort().join("|") === second.map(normalizeTeamName).sort().join("|");
 }
 
 function namesMatch(localName, apiName) {
@@ -1017,8 +1086,11 @@ function namesMatch(localName, apiName) {
 
 function normalizeTeamName(name) {
   const aliases = {
+    "bosnia herzegovina": "bosnia and herzegovina",
+    "cabo verde": "cape verde",
     usa: "united states",
     usmnt: "united states",
+    turkiye: "turkey",
     "cote divoire": "ivory coast",
     "cote d ivoire": "ivory coast",
     "czech republic": "czechia",
@@ -1030,11 +1102,13 @@ function normalizeTeamName(name) {
 }
 
 function formatApiStatus(status) {
+  if (!status) return "";
   const normalized = String(status || "").toUpperCase();
+  if (["SCHEDULED", "TIMED"].includes(normalized)) return "Scheduled";
   if (["LIVE", "IN_PLAY", "PAUSED"].includes(normalized)) return "Live";
   if (["FINISHED", "FT"].includes(normalized)) return "Final";
   if (["POSTPONED", "SUSPENDED", "CANCELLED"].includes(normalized)) return normalized[0] + normalized.slice(1).toLowerCase();
-  return status || "Scheduled";
+  return status;
 }
 
 function formatScoreLine(match) {

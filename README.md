@@ -64,6 +64,8 @@ Scores are checked on page refresh.
 
 By default, the app calls `api/scores`, which is intended to be a small serverless proxy that returns JSON shaped like `scores.sample.json`. Do not commit paid/private API keys into `app.js`.
 
+The same refresh can also update fixtures as the tournament progresses. If the API returns known `homeTeam` / `awayTeam` names for a knockout match that still has placeholder entrants, the app replaces the placeholders with those teams. Include an app fixture `id` when possible; otherwise include the UTC `date` so the app can match a resolved knockout fixture by kickoff time.
+
 ## Standings and Elimination
 
 When score data is returned, the app recalculates group tables from the match results:
