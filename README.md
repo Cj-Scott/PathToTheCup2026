@@ -6,7 +6,7 @@ A local/static web app for tracking the 2026 FIFA World Cup.
 
 - Schedule view with local/UTC kickoff times and English broadcast badges
 - Group standings with points and FIFA ranking
-- Team cards with best-ever World Cup result
+- Team cards with FIFA-style country codes and best-ever World Cup result
 - Historical rivalry and matchup context in expandable game details
 - Path-to-the-cup visualization with an optimal route and diverging branches
 - Search, filters, and sorting by date, A-Z, Z-A, and FIFA rank
@@ -31,6 +31,7 @@ The app uses compact tags to keep dense tournament information readable.
 ![Team and path tag examples](docs/screenshots/team-path-tags.png)
 
 - `Group`: the team's group assignment.
+- `Country code`: three-letter team code used in cards, standings, and match rows.
 - `FIFA #`: current FIFA world ranking used for sort and context.
 - `pts`: current group-stage points.
 - `Best result`: the team's best historical World Cup finish.

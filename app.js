@@ -1,75 +1,75 @@
 const groups = {
   A: [
-    ["Mexico", "🇲🇽", "Quarter-finals (1970, 1986)", 15],
-    ["South Africa", "🇿🇦", "Group stage", 61],
-    ["South Korea", "🇰🇷", "Fourth place (2002)", 22],
-    ["Czechia", "🇨🇿", "Runner-up as Czechoslovakia (1934, 1962)", 44]
+    ["Mexico", "MEX", "Quarter-finals (1970, 1986)", 15],
+    ["South Africa", "RSA", "Group stage", 61],
+    ["South Korea", "KOR", "Fourth place (2002)", 22],
+    ["Czechia", "CZE", "Runner-up as Czechoslovakia (1934, 1962)", 44]
   ],
   B: [
-    ["Canada", "🇨🇦", "Group stage", 27],
-    ["Bosnia and Herzegovina", "🇧🇦", "Group stage (2014)", 71],
-    ["Qatar", "🇶🇦", "Group stage (2022)", 51],
-    ["Switzerland", "🇨🇭", "Quarter-finals (1934, 1938, 1954)", 17]
+    ["Canada", "CAN", "Group stage", 27],
+    ["Bosnia and Herzegovina", "BIH", "Group stage (2014)", 71],
+    ["Qatar", "QAT", "Group stage (2022)", 51],
+    ["Switzerland", "SUI", "Quarter-finals (1934, 1938, 1954)", 17]
   ],
   C: [
-    ["Brazil", "🇧🇷", "Winner (1958, 1962, 1970, 1994, 2002)", 5],
-    ["Morocco", "🇲🇦", "Fourth place (2022)", 11],
-    ["Haiti", "🇭🇹", "Group stage (1974)", 84],
-    ["Scotland", "🏴", "Group stage", 36]
+    ["Brazil", "BRA", "Winner (1958, 1962, 1970, 1994, 2002)", 5],
+    ["Morocco", "MAR", "Fourth place (2022)", 11],
+    ["Haiti", "HAI", "Group stage (1974)", 84],
+    ["Scotland", "SCO", "Group stage", 36]
   ],
   D: [
-    ["United States", "🇺🇸", "Third place (1930)", 14],
-    ["Paraguay", "🇵🇾", "Quarter-finals (2010)", 39],
-    ["Australia", "🇦🇺", "Round of 16 (2006, 2022)", 26],
-    ["Turkey", "🇹🇷", "Third place (2002)", 25]
+    ["United States", "USA", "Third place (1930)", 14],
+    ["Paraguay", "PAR", "Quarter-finals (2010)", 39],
+    ["Australia", "AUS", "Round of 16 (2006, 2022)", 26],
+    ["Turkey", "TUR", "Third place (2002)", 25]
   ],
   E: [
-    ["Germany", "🇩🇪", "Winner (1954, 1974, 1990, 2014)", 9],
-    ["Curacao", "🇨🇼", "Debut", 82],
-    ["Ivory Coast", "🇨🇮", "Group stage", 42],
-    ["Ecuador", "🇪🇨", "Round of 16 (2006)", 23]
+    ["Germany", "GER", "Winner (1954, 1974, 1990, 2014)", 9],
+    ["Curacao", "CUW", "Debut", 82],
+    ["Ivory Coast", "CIV", "Group stage", 42],
+    ["Ecuador", "ECU", "Round of 16 (2006)", 23]
   ],
   F: [
-    ["Netherlands", "🇳🇱", "Runner-up (1974, 1978, 2010)", 7],
-    ["Japan", "🇯🇵", "Round of 16", 18],
-    ["Sweden", "🇸🇪", "Runner-up (1958)", 43],
-    ["Tunisia", "🇹🇳", "Group stage", 40]
+    ["Netherlands", "NED", "Runner-up (1974, 1978, 2010)", 7],
+    ["Japan", "JPN", "Round of 16", 18],
+    ["Sweden", "SWE", "Runner-up (1958)", 43],
+    ["Tunisia", "TUN", "Group stage", 40]
   ],
   G: [
-    ["Belgium", "🇧🇪", "Third place (2018)", 8],
-    ["Egypt", "🇪🇬", "Group stage", 34],
-    ["Iran", "🇮🇷", "Group stage", 20],
-    ["New Zealand", "🇳🇿", "Group stage", 86]
+    ["Belgium", "BEL", "Third place (2018)", 8],
+    ["Egypt", "EGY", "Group stage", 34],
+    ["Iran", "IRN", "Group stage", 20],
+    ["New Zealand", "NZL", "Group stage", 86]
   ],
   H: [
-    ["Spain", "🇪🇸", "Winner (2010)", 1],
-    ["Cape Verde", "🇨🇻", "Debut", 68],
-    ["Saudi Arabia", "🇸🇦", "Round of 16 (1994)", 60],
-    ["Uruguay", "🇺🇾", "Winner (1930, 1950)", 16]
+    ["Spain", "ESP", "Winner (2010)", 1],
+    ["Cape Verde", "CPV", "Debut", 68],
+    ["Saudi Arabia", "KSA", "Round of 16 (1994)", 60],
+    ["Uruguay", "URU", "Winner (1930, 1950)", 16]
   ],
   I: [
-    ["France", "🇫🇷", "Winner (1998, 2018)", 3],
-    ["Senegal", "🇸🇳", "Quarter-finals (2002)", 19],
-    ["Iraq", "🇮🇶", "Group stage (1986)", 58],
-    ["Norway", "🇳🇴", "Round of 16 (1998)", 29]
+    ["France", "FRA", "Winner (1998, 2018)", 3],
+    ["Senegal", "SEN", "Quarter-finals (2002)", 19],
+    ["Iraq", "IRQ", "Group stage (1986)", 58],
+    ["Norway", "NOR", "Round of 16 (1998)", 29]
   ],
   J: [
-    ["Argentina", "🇦🇷", "Winner (1978, 1986, 2022)", 2],
-    ["Algeria", "🇩🇿", "Round of 16 (2014)", 35],
-    ["Austria", "🇦🇹", "Third place (1954)", 24],
-    ["Jordan", "🇯🇴", "Debut", 66]
+    ["Argentina", "ARG", "Winner (1978, 1986, 2022)", 2],
+    ["Algeria", "ALG", "Round of 16 (2014)", 35],
+    ["Austria", "AUT", "Third place (1954)", 24],
+    ["Jordan", "JOR", "Debut", 66]
   ],
   K: [
-    ["Portugal", "🇵🇹", "Third place (1966)", 6],
-    ["DR Congo", "🇨🇩", "Group stage as Zaire (1974)", 56],
-    ["Uzbekistan", "🇺🇿", "Debut", 50],
-    ["Colombia", "🇨🇴", "Quarter-finals (2014)", 13]
+    ["Portugal", "POR", "Third place (1966)", 6],
+    ["DR Congo", "COD", "Group stage as Zaire (1974)", 56],
+    ["Uzbekistan", "UZB", "Debut", 50],
+    ["Colombia", "COL", "Quarter-finals (2014)", 13]
   ],
   L: [
-    ["England", "🏴", "Winner (1966)", 4],
-    ["Croatia", "🇭🇷", "Runner-up (2018)", 10],
-    ["Ghana", "🇬🇭", "Quarter-finals (2010)", 72],
-    ["Panama", "🇵🇦", "Group stage (2018)", 30]
+    ["England", "ENG", "Winner (1966)", 4],
+    ["Croatia", "CRO", "Runner-up (2018)", 10],
+    ["Ghana", "GHA", "Quarter-finals (2010)", 72],
+    ["Panama", "PAN", "Group stage (2018)", 30]
   ]
 };
 
@@ -174,10 +174,10 @@ const matchupFacts = {
 };
 
 const allTeams = Object.entries(groups).flatMap(([group, list], index) =>
-  list.map(([name, flag, best, ranking], seed) => ({
+  list.map(([name, code, best, ranking], seed) => ({
     id: slug(name),
     name,
-    flag,
+    code,
     best,
     ranking,
     group,
@@ -233,8 +233,9 @@ init();
 
 function init() {
   document.documentElement.lang = navigator.language || "en";
-  els.select.innerHTML = allTeams
-    .map(team => `<option value="${team.name}">${team.flag} ${team.name} - FIFA #${team.ranking}</option>`)
+  els.select.innerHTML = [...allTeams]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(team => `<option value="${team.name}">${team.code} - ${team.name} - FIFA #${team.ranking}</option>`)
     .join("");
   els.select.value = selectedTeam;
   els.timezone.value = timezoneMode;
@@ -343,7 +344,7 @@ function renderFocus() {
   const status = getTeamStatus(team.name);
 
   els.focus.innerHTML = `
-    <div class="flag ${status.key}" aria-hidden="true">${team.flag}</div>
+    <div class="flag code-badge ${status.key}" aria-hidden="true">${team.code}</div>
     <div class="focus-copy">
       <p class="eyebrow">Selected path</p>
       <h2>${team.name}</h2>
@@ -387,7 +388,7 @@ function renderSchedule() {
     const teamLine = match.teams.map(name => {
       const team = teamByName[name];
       if (!team) return `<span>${name}</span>`;
-      return `<span class="team-chip" data-tip="${escapeAttr(`${team.name}: FIFA #${team.ranking}. ${team.best}. Group ${team.group}.`)}">${team.flag} ${team.name}</span>`;
+      return `<span class="team-chip" data-tip="${escapeAttr(`${team.name}: FIFA #${team.ranking}. ${team.best}. Group ${team.group}.`)}"><span class="inline-code">${team.code}</span> ${team.name}</span>`;
     }).join(`<span class="muted">vs</span>`);
     const timeStatus = getMatchTimeStatus(match);
     const scoreLine = formatScoreLine(match);
@@ -449,7 +450,7 @@ function renderGroups() {
           <tbody>
             ${rows.map(row => `
               <tr class="${row.status.key}">
-                <td><span class="team-chip" data-tip="${escapeAttr(`${row.name}: FIFA #${row.ranking}. ${row.best}`)}">${row.flag} ${row.name}</span></td>
+                <td><span class="team-chip" data-tip="${escapeAttr(`${row.name}: FIFA #${row.ranking}. ${row.best}`)}"><span class="inline-code">${row.code}</span> ${row.name}</span></td>
                 <td>${row.ranking}</td><td>${row.played}</td><td>${row.won}</td><td>${row.drawn}</td><td>${row.lost}</td><td>${row.gd}</td><td><b>${row.points}</b></td><td><span class="mini-status ${row.status.key}">${row.status.short}</span></td>
               </tr>
             `).join("")}
@@ -484,7 +485,7 @@ function renderPath() {
 
   els.route.innerHTML = `
     <p class="eyebrow">Route card</p>
-    <h2>${team.flag} ${team.name}</h2>
+    <h2>${team.code} ${team.name}</h2>
       <div class="pill-row">
         <span class="pill">Current: ${standing.rankLabel}</span>
         <span class="pill">FIFA #${team.ranking}</span>
@@ -545,7 +546,7 @@ function renderTeams() {
     const status = getTeamStatus(team.name);
     return `
       <article class="team-card ${status.key}" data-tip="${escapeAttr(`${team.name}: ${status.label}. FIFA #${team.ranking}. ${team.best}. Select this team to highlight its path.`)}">
-        <div class="flag">${team.flag}</div>
+        <div class="flag code-badge">${team.code}</div>
         <h3>${team.name}</h3>
         <div class="pill-row">
           <span class="pill">Group ${team.group}</span>
@@ -622,9 +623,9 @@ function buildKnockoutMatches() {
 }
 
 function getStandings(group) {
-  const rows = groups[group].map(([name, flag, best, ranking], index) => ({
+  const rows = groups[group].map(([name, code, best, ranking], index) => ({
       name,
-      flag,
+      code,
       best,
       ranking,
       played: 0,
@@ -737,9 +738,9 @@ function getKnockoutStatus(teamName) {
 }
 
 function getRawGroupStandings(group) {
-  const rows = groups[group].map(([name, flag, best, ranking], index) => ({
+  const rows = groups[group].map(([name, code, best, ranking], index) => ({
     name,
-    flag,
+    code,
     best,
     ranking,
     played: 0,
@@ -972,7 +973,7 @@ function getOptimalPath(team, paths) {
   return [
     {
       kicker: "Input",
-      title: `${team.flag} ${team.name}`,
+      title: `${team.code} ${team.name}`,
       text: `Group ${team.group}, FIFA #${team.ranking}. Current model starts before results are entered.`,
       meta: "Selected team",
       tone: "start"

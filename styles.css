@@ -176,6 +176,25 @@ main {
   font-size: 2.45rem;
 }
 
+.code-badge {
+  font-size: 1.15rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.inline-code {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 6px;
+  background: #eef5f2;
+  color: #31584a;
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
 .focus-copy {
   display: grid;
   gap: 9px;
