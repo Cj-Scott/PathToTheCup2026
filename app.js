@@ -281,7 +281,8 @@ const matches = buildGroupMatches().concat(buildKnockoutMatches());
 const scoreApi = {
   provider: "proxy",
   url: window.PATH_TO_CUP_SCORE_API_URL || "api/scores",
-  footballDataUrl: "https://api.football-data.org/v4/competitions/WC/matches"
+  footballDataUrl: "https://api.football-data.org/v4/competitions/WC/matches",
+  espnUrl: "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260719&limit=200"
 };
 let selectedTeam = "United States";
 let stageFilter = "all";
@@ -948,10 +949,22 @@ async function fetchScoreUpdates() {
     return normalizeFootballDataScores(payload);
   }
 
-  const response = await fetch(scoreApi.url, { cache: "no-store" });
-  if (!response.ok) throw new Error(`Score API returned ${response.status}`);
+  try {
+    const response = await fetch(scoreApi.url, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Score API returned ${response.status}`);
+    const payload = await response.json();
+    return normalizeProxyScores(payload);
+  } catch (error) {
+    console.warn("Primary score API unavailable, falling back to ESPN:", error);
+    return fetchEspnScoreUpdates();
+  }
+}
+
+async function fetchEspnScoreUpdates() {
+  const response = await fetch(scoreApi.espnUrl, { cache: "no-store" });
+  if (!response.ok) throw new Error(`ESPN scoreboard returned ${response.status}`);
   const payload = await response.json();
-  return normalizeProxyScores(payload);
+  return normalizeEspnScores(payload);
 }
 
 function normalizeProxyScores(payload) {
@@ -984,6 +997,37 @@ function normalizeFootballDataScores(payload) {
   }));
 }
 
+function normalizeEspnScores(payload) {
+  return (payload.events || []).map(event => {
+    const competition = event.competitions?.[0];
+    const competitors = competition?.competitors || [];
+    const home = competitors.find(team => team.homeAway === "home");
+    const away = competitors.find(team => team.homeAway === "away");
+    const status = competition?.status?.type?.name || event.status?.type?.name || competition?.status?.type?.state;
+    const hasResult = isResultStatus(status);
+    const channels = competition?.broadcasts?.flatMap(broadcast => broadcast.names || []) || [];
+    return {
+      homeTeam: home?.team?.displayName,
+      awayTeam: away?.team?.displayName,
+      date: event.date,
+      venue: formatEspnVenue(competition?.venue),
+      channel: channels[0],
+      channels,
+      homeScore: hasResult ? home?.score : null,
+      awayScore: hasResult ? away?.score : null,
+      status,
+      updatedAt: new Date().toISOString()
+    };
+  });
+}
+
+function formatEspnVenue(venue) {
+  if (!venue?.fullName) return "";
+  const city = venue.address?.city;
+  const country = venue.address?.country;
+  return `${venue.fullName}${city ? ` - ${city}${country ? `, ${country}` : ""}` : ""}`;
+}
+
 function applyScoreUpdates(updates) {
   const result = {
     scores: 0,
@@ -1012,12 +1056,16 @@ function applyScoreUpdates(updates) {
     }
 
     const status = formatApiStatus(update.status);
-    if (status && match.status !== status) {
+    if (status && shouldApplyStatus(match, status) && match.status !== status) {
       match.status = status;
       result.statuses += 1;
     }
   });
   return result;
+}
+
+function shouldApplyStatus(match, status) {
+  return !(match.stage === "Knockout" && hasPlaceholderTeam(match) && status === "Scheduled");
 }
 
 function formatScoreSyncStatus(result) {
@@ -1128,11 +1176,16 @@ function normalizeTeamName(name) {
 function formatApiStatus(status) {
   if (!status) return "";
   const normalized = String(status || "").toUpperCase();
-  if (["SCHEDULED", "TIMED"].includes(normalized)) return "Scheduled";
-  if (["LIVE", "IN_PLAY", "PAUSED"].includes(normalized)) return "Live";
-  if (["FINISHED", "FT"].includes(normalized)) return "Final";
+  if (["SCHEDULED", "TIMED", "STATUS_SCHEDULED", "STATUS_FIRST_PITCH"].includes(normalized)) return "Scheduled";
+  if (["LIVE", "IN_PLAY", "IN_PROGRESS", "PAUSED", "HALFTIME", "STATUS_IN_PROGRESS", "STATUS_FIRST_HALF", "STATUS_HALFTIME", "STATUS_SECOND_HALF", "STATUS_EXTRA_TIME", "STATUS_PENALTY_SHOOTOUT"].includes(normalized)) return "Live";
+  if (["FINISHED", "FT", "FULL_TIME", "STATUS_FINAL", "STATUS_FULL_TIME"].includes(normalized)) return "Final";
   if (["POSTPONED", "SUSPENDED", "CANCELLED"].includes(normalized)) return normalized[0] + normalized.slice(1).toLowerCase();
   return status;
+}
+
+function isResultStatus(status) {
+  const normalized = String(status || "").toUpperCase();
+  return !["", "SCHEDULED", "TIMED", "STATUS_SCHEDULED", "PRE", "STATUS_FIRST_PITCH"].includes(normalized);
 }
 
 function formatScoreLine(match) {
