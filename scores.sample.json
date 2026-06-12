@@ -10,7 +10,22 @@
       "homeScore": 2,
       "awayScore": 1,
       "status": "FINISHED",
+      "statusDetail": "FT",
       "updatedAt": "2026-06-12T23:00:00-04:00"
+    },
+    {
+      "id": "G1",
+      "homeTeam": "Mexico",
+      "awayTeam": "South Africa",
+      "date": "2026-06-11T19:00:00Z",
+      "venue": "Estadio Banorte - Mexico City, Mexico",
+      "channels": ["FOX", "Tele", "Peacock"],
+      "homeScore": 1,
+      "awayScore": 0,
+      "status": "LIVE",
+      "displayClock": "42'",
+      "statusDetail": "1st Half",
+      "updatedAt": "2026-06-11T19:42:00Z"
     },
     {
       "id": "K73",

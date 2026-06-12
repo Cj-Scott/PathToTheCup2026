@@ -23,7 +23,7 @@ The app uses compact tags to keep dense tournament information readable.
 - `Score pill`: current score returned by the external scores API.
 - `FOX` / `FS1`: expected English broadcast channel.
 - `Group D, Matchday 1`, venue, and status tags: match metadata.
-- `Upcoming`, `Started within 2h`, or `Previous`: time-window status used by the schedule filter.
+- `Upcoming`, `Started within 4h`, `Live 42'`, or `Previous`: time-window and live-clock status used by the schedule filter.
 - `+`: expands match details, including broadcast, score source, stage impact, and matchup context.
 
 ### Team and Path Tags

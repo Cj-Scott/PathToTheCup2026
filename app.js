@@ -293,6 +293,7 @@ let teamSortMode = "az";
 let showPreviousGames = false;
 let scoreSyncStatus = "Scores pending refresh API";
 let timezoneMode = localStorage.getItem("timezoneMode") || "local";
+const currentMatchWindowMs = 4 * 60 * 60 * 1000;
 
 const els = {
   search: document.querySelector("#searchInput"),
@@ -977,6 +978,9 @@ function normalizeProxyScores(payload) {
     venue: item.venue?.fullName || item.venue?.name || item.venue,
     channel: item.channel,
     channels: item.channels || item.broadcasts,
+    clock: item.clock,
+    displayClock: item.displayClock || item.clockDisplay || item.gameClock,
+    statusDetail: item.statusDetail || item.shortDetail || item.detail,
     homeScore: item.homeScore ?? item.score?.home ?? item.score?.fullTime?.home,
     awayScore: item.awayScore ?? item.score?.away ?? item.score?.fullTime?.away,
     status: item.status || item.state,
@@ -990,6 +994,9 @@ function normalizeFootballDataScores(payload) {
     awayTeam: item.awayTeam?.name,
     date: item.utcDate,
     venue: item.venue,
+    clock: item.clock,
+    displayClock: item.displayClock,
+    statusDetail: item.status,
     homeScore: item.score?.fullTime?.home ?? item.score?.regularTime?.home,
     awayScore: item.score?.fullTime?.away ?? item.score?.regularTime?.away,
     status: item.status,
@@ -1006,6 +1013,7 @@ function normalizeEspnScores(payload) {
     const status = competition?.status?.type?.name || event.status?.type?.name || competition?.status?.type?.state;
     const hasResult = isResultStatus(status);
     const channels = competition?.broadcasts?.flatMap(broadcast => broadcast.names || []) || [];
+    const statusInfo = competition?.status || event.status;
     return {
       homeTeam: home?.team?.displayName,
       awayTeam: away?.team?.displayName,
@@ -1013,6 +1021,9 @@ function normalizeEspnScores(payload) {
       venue: formatEspnVenue(competition?.venue),
       channel: channels[0],
       channels,
+      clock: statusInfo?.clock,
+      displayClock: statusInfo?.displayClock,
+      statusDetail: statusInfo?.type?.shortDetail || statusInfo?.type?.detail || statusInfo?.type?.description,
       homeScore: hasResult ? home?.score : null,
       awayScore: hasResult ? away?.score : null,
       status,
@@ -1060,12 +1071,20 @@ function applyScoreUpdates(updates) {
       match.status = status;
       result.statuses += 1;
     }
+
+    updateMatchClock(match, update);
   });
   return result;
 }
 
 function shouldApplyStatus(match, status) {
   return !(match.stage === "Knockout" && hasPlaceholderTeam(match) && status === "Scheduled");
+}
+
+function updateMatchClock(match, update) {
+  match.clock = update.clock ?? match.clock;
+  match.displayClock = update.displayClock || match.displayClock;
+  match.statusDetail = update.statusDetail || match.statusDetail;
 }
 
 function formatScoreSyncStatus(result) {
@@ -1377,15 +1396,21 @@ function formatPageUpdatedTime(date) {
 }
 
 function isCurrentOrFutureMatch(match) {
-  return new Date(match.date).getTime() >= Date.now() - 2 * 60 * 60 * 1000;
+  return new Date(match.date).getTime() >= Date.now() - currentMatchWindowMs;
 }
 
 function getMatchTimeStatus(match) {
   const start = new Date(match.date).getTime();
   const now = Date.now();
-  if (start < now - 2 * 60 * 60 * 1000) return { key: "previous", label: "Previous" };
-  if (start <= now) return { key: "current", label: "Started within 2h" };
+  if (match.status === "Live") return { key: "current", label: formatLiveClock(match) };
+  if (match.status === "Final") return { key: "previous", label: match.statusDetail || "Final" };
+  if (start < now - currentMatchWindowMs) return { key: "previous", label: "Previous" };
+  if (start <= now) return { key: "current", label: "Started within 4h" };
   return { key: "upcoming", label: "Upcoming" };
+}
+
+function formatLiveClock(match) {
+  return match.displayClock ? `Live ${match.displayClock}` : match.statusDetail || "Live";
 }
 
 function matchesSearch(...values) {
