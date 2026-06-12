@@ -5,6 +5,8 @@ A local/static web app for tracking the 2026 FIFA World Cup.
 ## Features
 
 - Schedule view with local/UTC kickoff times and English broadcast badges
+- Schedule preview capped to the next 15 filtered matches, with show-more controls that reveal 10 at a time
+- Interactive North America stadium map with zoom controls that follows schedule filters
 - Group standings with points and FIFA ranking
 - Team cards with FIFA-style country codes and best-ever World Cup result
 - Historical rivalry and matchup context in expandable game details

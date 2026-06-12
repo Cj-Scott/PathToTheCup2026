@@ -278,6 +278,24 @@ const knockoutScheduleUtc = [
 ];
 
 const matches = buildGroupMatches().concat(buildKnockoutMatches());
+const stadiumLocations = {
+  "AT&T Stadium": { lat: 32.7473, lon: -97.0945, city: "Arlington, Texas" },
+  "BC Place": { lat: 49.2768, lon: -123.1119, city: "Vancouver, Canada" },
+  "BMO Field": { lat: 43.6332, lon: -79.4186, city: "Toronto, Canada" },
+  "Estadio Akron": { lat: 20.6819, lon: -103.4621, city: "Guadalajara, Mexico" },
+  "Estadio Banorte": { lat: 19.3029, lon: -99.1505, city: "Mexico City, Mexico" },
+  "Estadio BBVA": { lat: 25.6682, lon: -100.2448, city: "Guadalupe, Mexico" },
+  "GEHA Field at Arrowhead Stadium": { lat: 39.0489, lon: -94.4839, city: "Kansas City, Missouri" },
+  "Gillette Stadium": { lat: 42.0909, lon: -71.2643, city: "Foxborough, Massachusetts" },
+  "Hard Rock Stadium": { lat: 25.9580, lon: -80.2389, city: "Miami Gardens, Florida" },
+  "Levi's Stadium": { lat: 37.4030, lon: -121.9700, city: "Santa Clara, California" },
+  "Lincoln Financial Field": { lat: 39.9008, lon: -75.1675, city: "Philadelphia, Pennsylvania" },
+  "Lumen Field": { lat: 47.5952, lon: -122.3316, city: "Seattle, Washington" },
+  "Mercedes-Benz Stadium": { lat: 33.7554, lon: -84.4008, city: "Atlanta, Georgia" },
+  "MetLife Stadium": { lat: 40.8135, lon: -74.0745, city: "East Rutherford, New Jersey" },
+  "NRG Stadium": { lat: 29.6847, lon: -95.4107, city: "Houston, Texas" },
+  "SoFi Stadium": { lat: 33.9535, lon: -118.3392, city: "Inglewood, California" }
+};
 const scoreApi = {
   provider: "proxy",
   url: window.PATH_TO_CUP_SCORE_API_URL || "api/scores",
@@ -291,9 +309,15 @@ let selectedTeamOnly = false;
 let scheduleSortMode = "date";
 let teamSortMode = "az";
 let showPreviousGames = false;
+let scheduleVisibleCount = 15;
 let scoreSyncStatus = "Scores pending refresh API";
 let timezoneMode = localStorage.getItem("timezoneMode") || "local";
+let stadiumLeafletMap = null;
+let stadiumMarkersLayer = null;
 const currentMatchWindowMs = 4 * 60 * 60 * 1000;
+const schedulePreviewLimit = 15;
+const scheduleShowMoreStep = 10;
+const hostMapBounds = [[14, -132], [62, -52]];
 
 const els = {
   search: document.querySelector("#searchInput"),
@@ -308,11 +332,15 @@ const els = {
   teamSort: document.querySelector("#teamSortSelect"),
   selectedTeamOnly: document.querySelector("#selectedTeamOnly"),
   showPreviousGames: document.querySelector("#showPreviousGames"),
+  showMoreMatches: document.querySelector("#showMoreMatches"),
+  showMoreMatchesBottom: document.querySelector("#showMoreMatchesBottom"),
   clearFilters: document.querySelector("#clearFilters"),
   groups: document.querySelector("#groupsGrid"),
   teamGrid: document.querySelector("#teamGrid"),
   route: document.querySelector("#routePanel"),
-  bracket: document.querySelector("#bracket")
+  bracket: document.querySelector("#bracket"),
+  stadiumMap: document.querySelector("#stadiumMap"),
+  stadiumMapNote: document.querySelector("#stadiumMapNote")
 };
 
 init();
@@ -336,17 +364,20 @@ function init() {
       document.querySelectorAll("[data-filter-stage]").forEach(item => item.classList.remove("active"));
       button.classList.add("active");
       stageFilter = button.dataset.filterStage;
+      resetSchedulePreview();
       renderSchedule();
     });
   });
 
   els.search.addEventListener("input", event => {
     searchTerm = event.target.value.trim().toLowerCase();
+    resetSchedulePreview();
     renderAll();
   });
 
   els.sort.addEventListener("change", event => {
     scheduleSortMode = event.target.value;
+    resetSchedulePreview();
     renderSchedule();
   });
 
@@ -368,15 +399,24 @@ function init() {
 
   els.selectedTeamOnly.addEventListener("click", () => {
     selectedTeamOnly = !selectedTeamOnly;
+    resetSchedulePreview();
     els.selectedTeamOnly.classList.toggle("active", selectedTeamOnly);
     renderSchedule();
   });
 
   els.showPreviousGames.addEventListener("click", () => {
     showPreviousGames = !showPreviousGames;
+    resetSchedulePreview();
     els.showPreviousGames.classList.toggle("active", showPreviousGames);
     els.showPreviousGames.textContent = showPreviousGames ? "Hide previous games" : "Show previous games";
     renderSchedule();
+  });
+
+  [els.showMoreMatches, els.showMoreMatchesBottom].forEach(button => {
+    button.addEventListener("click", () => {
+      scheduleVisibleCount += scheduleShowMoreStep;
+      renderSchedule();
+    });
   });
 
   els.clearFilters.addEventListener("click", () => {
@@ -384,6 +424,7 @@ function init() {
     stageFilter = "all";
     selectedTeamOnly = false;
     showPreviousGames = false;
+    resetSchedulePreview();
     scheduleSortMode = "date";
     timezoneMode = "local";
     localStorage.setItem("timezoneMode", timezoneMode);
@@ -392,7 +433,10 @@ function init() {
     els.timezone.value = "local";
     els.selectedTeamOnly.classList.remove("active");
     els.showPreviousGames.classList.remove("active");
+    els.showMoreMatches.classList.remove("active");
+    els.showMoreMatchesBottom.classList.remove("active");
     els.showPreviousGames.textContent = "Show previous games";
+    updateShowMoreControls(0);
     document.querySelectorAll("[data-filter-stage]").forEach(button => {
       button.classList.toggle("active", button.dataset.filterStage === "all");
     });
@@ -464,14 +508,18 @@ function renderSchedule() {
     return stageOk && teamOk && timeOk && (!searchTerm || searchable.includes(searchTerm));
   }).sort(compareMatches);
 
-  els.scheduleCount.textContent = `Showing ${filtered.length} of ${matches.length} matches - ${scoreSyncStatus}`;
+  const visible = filtered.slice(0, scheduleVisibleCount);
+  const hiddenCount = Math.max(filtered.length - visible.length, 0);
+  els.scheduleCount.textContent = `Showing ${visible.length} of ${filtered.length} filtered matches (${matches.length} total) - ${scoreSyncStatus}`;
+  updateShowMoreControls(hiddenCount);
+  renderStadiumMap(filtered);
 
   if (!filtered.length) {
     els.matchList.innerHTML = `<div class="empty">No matches match the current filter.</div>`;
     return;
   }
 
-  els.matchList.innerHTML = filtered.map(match => {
+  els.matchList.innerHTML = visible.map(match => {
     const teamLine = match.teams.map(name => {
       const team = teamByName[name];
       if (!team) return `<span>${name}</span>`;
@@ -518,6 +566,138 @@ function renderSchedule() {
       button.textContent = card.classList.contains("open") ? "−" : "+";
     });
   });
+}
+
+function resetSchedulePreview() {
+  scheduleVisibleCount = schedulePreviewLimit;
+}
+
+function updateShowMoreControls(hiddenCount) {
+  const shouldHide = hiddenCount <= 0;
+  const nextCount = Math.min(scheduleShowMoreStep, hiddenCount);
+  [els.showMoreMatches, els.showMoreMatchesBottom].forEach(button => {
+    button.hidden = shouldHide;
+    button.classList.toggle("active", !shouldHide);
+    button.textContent = shouldHide ? "Show more matches" : `Show ${nextCount} more`;
+  });
+}
+
+function renderStadiumMap(filteredMatches) {
+  const venueGroups = groupMatchesByVenue(filteredMatches);
+  destroyLeafletMap();
+  els.stadiumMapNote.textContent = venueGroups.length
+    ? `${venueGroups.length} stadium${venueGroups.length === 1 ? "" : "s"} from the active schedule filters.`
+    : "No stadiums match the active schedule filters.";
+
+  if (!venueGroups.length) {
+    els.stadiumMap.innerHTML = `<div class="empty map-empty">No stadiums to map for this filter.</div>`;
+    return;
+  }
+
+  const list = venueGroups.slice(0, 8).map(group => {
+    const next = group.matches[0];
+    return `
+      <li>
+        <b>${group.name}</b>
+        <span>${formatMapMatchLabel(next)}</span>
+      </li>
+    `;
+  }).join("");
+
+  els.stadiumMap.innerHTML = `
+    <div class="map-viewport" id="stadiumLeafletMap" aria-label="Interactive map focused on Canada, United States, and Mexico"></div>
+    <ol class="map-list">${list}</ol>
+  `;
+  renderLeafletStadiumMap(venueGroups);
+}
+
+function destroyLeafletMap() {
+  if (stadiumLeafletMap) {
+    stadiumLeafletMap.remove();
+  }
+  stadiumLeafletMap = null;
+  stadiumMarkersLayer = null;
+}
+
+function groupMatchesByVenue(filteredMatches) {
+  const groupsByVenue = new Map();
+  filteredMatches.forEach(match => {
+    const location = getStadiumLocation(match.venue);
+    if (!location) return;
+    const name = getVenueName(match.venue);
+    if (!groupsByVenue.has(name)) {
+      groupsByVenue.set(name, { name, location, matches: [] });
+    }
+    groupsByVenue.get(name).matches.push(match);
+  });
+  return [...groupsByVenue.values()]
+    .map(group => ({
+      ...group,
+      matches: group.matches.sort((a, b) => new Date(a.date) - new Date(b.date))
+    }))
+    .sort((a, b) => new Date(a.matches[0].date) - new Date(b.matches[0].date));
+}
+
+function getVenueName(venue) {
+  return String(venue || "").split(" - ")[0];
+}
+
+function getStadiumLocation(venue) {
+  return stadiumLocations[getVenueName(venue)];
+}
+
+function formatMapMatchLabel(match) {
+  return `${formatMonthDay(match.date)} ${formatTime(match.date)} - ${match.teams.join(" vs ")} at ${getTimezoneLabel()}`;
+}
+
+function renderLeafletStadiumMap(venueGroups) {
+  if (!window.L) {
+    document.querySelector("#stadiumLeafletMap").innerHTML = `<div class="empty map-empty">Interactive map tiles could not load.</div>`;
+    return;
+  }
+
+  stadiumLeafletMap = L.map("stadiumLeafletMap", {
+    zoomControl: true,
+    scrollWheelZoom: true
+  });
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(stadiumLeafletMap);
+  stadiumMarkersLayer = L.layerGroup().addTo(stadiumLeafletMap);
+  stadiumLeafletMap.fitBounds(hostMapBounds, { padding: [18, 18] });
+  updateLeafletMarkers(venueGroups);
+  setTimeout(() => stadiumLeafletMap.invalidateSize(), 0);
+}
+
+function updateLeafletMarkers(venueGroups) {
+  stadiumMarkersLayer.clearLayers();
+  venueGroups.forEach(group => {
+    const next = group.matches[0];
+    const marker = L.marker([group.location.lat, group.location.lon], {
+      icon: L.divIcon({
+        className: `stadium-marker ${next.status === "Live" ? "live" : ""}`,
+        html: `<span>${group.matches.length}</span>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+        popupAnchor: [0, -18]
+      })
+    });
+    marker.bindPopup(getStadiumPopup(group));
+    marker.bindTooltip(`${group.name}: ${group.matches.length} match${group.matches.length === 1 ? "" : "es"}`);
+    marker.addTo(stadiumMarkersLayer);
+  });
+}
+
+function getStadiumPopup(group) {
+  const upcoming = group.matches.slice(0, 4).map(match => `<li>${escapeHtml(formatMapMatchLabel(match))}</li>`).join("");
+  return `
+    <div class="stadium-popup">
+      <b>${escapeHtml(group.name)}</b>
+      <span>${escapeHtml(group.location.city)}</span>
+      <ol>${upcoming}</ol>
+    </div>
+  `;
 }
 
 function renderGroups() {
@@ -1424,4 +1604,14 @@ function slug(value) {
 
 function escapeAttr(value) {
   return value.replace(/"/g, "&quot;");
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[character]));
 }

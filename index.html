@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="language" content="English">
     <title>World Cup 2026 Path Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -93,9 +94,23 @@
           </label>
           <button class="utility" id="selectedTeamOnly">Selected team only</button>
           <button class="utility" id="showPreviousGames">Show previous games</button>
+          <button class="utility" id="showMoreMatches">Show more matches</button>
           <button class="utility" id="clearFilters">Clear filters</button>
         </div>
         <div class="match-list" id="matchList"></div>
+        <div class="schedule-more">
+          <button class="utility" id="showMoreMatchesBottom">Show more matches</button>
+        </div>
+        <section class="stadium-map" aria-labelledby="stadiumMapTitle">
+          <div class="stadium-map-head">
+            <div>
+              <p class="eyebrow">Host map</p>
+              <h3 id="stadiumMapTitle">Upcoming stadium locations</h3>
+            </div>
+            <p class="source-note" id="stadiumMapNote">Map follows the active schedule filters.</p>
+          </div>
+          <div class="stadium-map-canvas" id="stadiumMap"></div>
+        </section>
       </section>
 
       <section class="view" id="groupsView" aria-labelledby="groupsTitle">
@@ -142,6 +157,7 @@
       </section>
     </main>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
