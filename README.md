@@ -2,6 +2,8 @@
 
 A local/static web app for tracking the 2026 FIFA World Cup.
 
+# [See it live here](https://cj-scott.github.io/PathToTheCup2026/)
+
 ## Features
 
 - Schedule view with local/UTC kickoff times and English broadcast badges
