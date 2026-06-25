@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en" translate="yes">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="language" content="English">
+    <title>World Cup 2026 Path Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">FIFA World Cup 2026</p>
+        <h1>Path to the Cup</h1>
+      </div>
+      <p class="updated-stamp" id="updatedStamp" aria-live="polite">Updated: --</p>
+      <div class="controls" aria-label="Global controls">
+        <label class="search">
+          <span>Search</span>
+          <input id="searchInput" type="search" placeholder="Team, group, venue, channel">
+        </label>
+        <label class="select">
+          <span>Team path</span>
+          <select id="teamSelect"></select>
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <aside class="api-disclaimer" id="apiDisclaimer">
+        Scores update when this page refreshes and depend on an external scores API. If the API is unavailable, scheduled fixtures still display.
+      </aside>
+
+      <section class="hero-grid" aria-label="Tournament overview">
+        <article class="focus-panel" id="focusPanel"></article>
+        <article class="stat-panel">
+          <div>
+            <span class="stat-value" id="teamsRemainingStat">48</span>
+            <span class="stat-label">teams active</span>
+          </div>
+          <div>
+            <span class="stat-value" id="groupsRemainingStat">12</span>
+            <span class="stat-label">groups active</span>
+          </div>
+          <div>
+            <span class="stat-value" id="matchesRemainingStat">104</span>
+            <span class="stat-label">matches left</span>
+          </div>
+          <div>
+            <span class="stat-value" id="timezoneStat">Local</span>
+            <span class="stat-label">kickoffs</span>
+          </div>
+        </article>
+      </section>
+
+      <nav class="tabs" aria-label="Views">
+        <button class="tab active" data-view="schedule">Schedule</button>
+        <button class="tab" data-view="groups">Groups</button>
+        <button class="tab" data-view="path">Path</button>
+        <button class="tab" data-view="teams">Teams</button>
+      </nav>
+
+      <section class="view active" id="scheduleView" aria-labelledby="scheduleTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Matches</p>
+            <h2 id="scheduleTitle">Schedule and broadcast</h2>
+          </div>
+          <p class="source-note">Seeded with current public tournament structure; scores, points, and per-match channels are ready to update as official feeds settle.</p>
+          <div class="segmented" role="group" aria-label="Schedule filters">
+            <button class="active" data-filter-stage="all">All</button>
+            <button data-filter-stage="Group">Group</button>
+            <button data-filter-stage="Knockout">Knockout</button>
+          </div>
+        </div>
+        <div class="schedule-tools">
+          <span class="count-pill" id="scheduleCount">Showing matches</span>
+          <label class="sort-control">
+            <span>Sort</span>
+            <select id="sortSelect">
+              <option value="date">Date</option>
+              <option value="az">A-Z</option>
+              <option value="za">Z-A</option>
+              <option value="rank">FIFA Rank</option>
+            </select>
+          </label>
+          <label class="sort-control">
+            <span>Time</span>
+            <select id="timezoneSelect">
+              <option value="local">Local time</option>
+              <option value="utc">UTC</option>
+            </select>
+          </label>
+          <label class="sort-control odds-source-control" id="scheduleOddsSourceControl" title="">
+            <span>Chance source</span>
+            <select id="scheduleOddsSourceSelect">
+              <option value="auto">Auto best available</option>
+              <option value="sportsbook">Sportsbook odds</option>
+              <option value="polymarket">Polymarket price</option>
+              <option value="fifa">FIFA projection</option>
+            </select>
+          </label>
+          <button class="utility" id="selectedTeamOnly">Selected team only</button>
+          <button class="utility" id="showPreviousGames">Show previous games</button>
+          <button class="utility" id="showMoreMatches">Show more matches</button>
+          <button class="utility" id="clearFilters">Clear filters</button>
+        </div>
+        <div class="match-list" id="matchList"></div>
+        <div class="schedule-more">
+          <button class="utility" id="showMoreMatchesBottom">Show more matches</button>
+        </div>
+        <section class="stadium-map" aria-labelledby="stadiumMapTitle">
+          <div class="stadium-map-head">
+            <div>
+              <p class="eyebrow">Host map</p>
+              <h3 id="stadiumMapTitle">Upcoming stadium locations</h3>
+            </div>
+            <p class="source-note" id="stadiumMapNote">Map follows the active schedule filters.</p>
+          </div>
+          <div class="stadium-map-canvas" id="stadiumMap"></div>
+        </section>
+      </section>
+
+      <section class="view" id="groupsView" aria-labelledby="groupsTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Tables</p>
+            <h2 id="groupsTitle">Group standings</h2>
+          </div>
+          <button class="utility" id="collapseGroups">Collapse all</button>
+        </div>
+        <div class="groups-grid" id="groupsGrid"></div>
+      </section>
+
+      <section class="view" id="pathView" aria-labelledby="pathTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Route</p>
+            <h2 id="pathTitle">Selected team path</h2>
+          </div>
+          <p class="source-note">Round of 32 slots depend on final group rank and best third-place ranking.</p>
+          <label class="sort-control odds-source-control" id="pathOddsSourceControl" title="">
+            <span>Chance source</span>
+            <select id="pathOddsSourceSelect">
+              <option value="auto">Auto best available</option>
+              <option value="sportsbook">Sportsbook odds</option>
+              <option value="polymarket">Polymarket price</option>
+              <option value="fifa">FIFA projection</option>
+            </select>
+          </label>
+        </div>
+        <div class="path-layout">
+          <div class="route-panel" id="routePanel"></div>
+          <div class="bracket" id="bracket"></div>
+          <div class="bracket-scrollbar" id="bracketScroll" aria-hidden="true" hidden>
+            <div id="bracketScrollInner"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="teamsView" aria-labelledby="teamsTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Profiles</p>
+            <h2 id="teamsTitle">Team quick cards</h2>
+          </div>
+          <label class="sort-control">
+            <span>Sort</span>
+            <select id="teamSortSelect">
+              <option value="az">A-Z</option>
+              <option value="za">Z-A</option>
+              <option value="rank">FIFA Rank</option>
+            </select>
+          </label>
+        </div>
+        <div class="team-grid" id="teamGrid"></div>
+      </section>
+
+      <section class="view secret-view" id="diagnosticsView" aria-labelledby="diagnosticsTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Secret</p>
+            <h2 id="diagnosticsTitle">Odds diagnostics</h2>
+          </div>
+          <p class="source-note">Open with <code>#diagnostics</code>. Values update after refresh.</p>
+        </div>
+        <div class="diagnostics-grid" id="diagnosticsGrid"></div>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

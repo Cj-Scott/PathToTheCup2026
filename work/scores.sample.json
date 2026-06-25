@@ -1,0 +1,41 @@
+{
+  "matches": [
+    {
+      "id": "G19",
+      "homeTeam": "United States",
+      "awayTeam": "Paraguay",
+      "date": "2026-06-13T01:00:00Z",
+      "venue": "SoFi Stadium - Inglewood, California, USA",
+      "channels": ["FOX", "Tele", "Peacock"],
+      "homeScore": 2,
+      "awayScore": 1,
+      "status": "FINISHED",
+      "statusDetail": "FT",
+      "updatedAt": "2026-06-12T23:00:00-04:00"
+    },
+    {
+      "id": "G1",
+      "homeTeam": "Mexico",
+      "awayTeam": "South Africa",
+      "date": "2026-06-11T19:00:00Z",
+      "venue": "Estadio Banorte - Mexico City, Mexico",
+      "channels": ["FOX", "Tele", "Peacock"],
+      "homeScore": 1,
+      "awayScore": 0,
+      "status": "LIVE",
+      "displayClock": "42'",
+      "statusDetail": "1st Half",
+      "updatedAt": "2026-06-11T19:42:00Z"
+    },
+    {
+      "id": "K73",
+      "homeTeam": "Mexico",
+      "awayTeam": "Canada",
+      "date": "2026-06-28T19:00:00Z",
+      "venue": "SoFi Stadium - Inglewood, California, USA",
+      "channels": ["FOX", "Tele", "Peacock"],
+      "status": "TIMED",
+      "updatedAt": "2026-06-28T12:00:00Z"
+    }
+  ]
+}
