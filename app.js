@@ -370,6 +370,17 @@ const scoreApi = {
   footballDataUrl: "https://api.football-data.org/v4/competitions/WC/matches",
   espnUrl: "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260719&limit=200"
 };
+const oddsApi = {
+  url: window.PATH_TO_CUP_ODDS_API_URL || "",
+  key: window.PATH_TO_CUP_ODDS_API_KEY || localStorage.getItem("oddsApiKey") || "",
+  sportKey: window.PATH_TO_CUP_ODDS_SPORT_KEY || localStorage.getItem("oddsSportKey") || "soccer_fifa_world_cup",
+  bookmakers: window.PATH_TO_CUP_ODDS_BOOKMAKERS || "caesars,betmgm,draftkings,fanduel,williamhill_us,bovada",
+  baseUrl: "https://api.the-odds-api.com/v4/sports"
+};
+const polymarketApi = {
+  url: window.PATH_TO_CUP_POLYMARKET_API_URL || "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=200&order=volume&ascending=false",
+  enabled: window.PATH_TO_CUP_POLYMARKET_ENABLED !== false
+};
 let selectedTeam = "United States";
 let stageFilter = "all";
 let searchTerm = "";
@@ -379,9 +390,21 @@ let teamSortMode = "az";
 let showPreviousGames = false;
 let scheduleVisibleCount = 15;
 let scoreSyncStatus = "Scores pending refresh API";
+let oddsSyncStatus = "Odds not configured";
+let oddsDiagnostic = "No odds request has completed yet";
+const diagnostics = {
+  score: "No score refresh has completed yet",
+  espn: "ESPN not checked yet",
+  polymarket: "Polymarket not checked yet",
+  odds: "No odds refresh has completed yet",
+  matching: "No odds matching has run yet"
+};
+let oddsSourceMode = localStorage.getItem("oddsSourceMode") || "auto";
 let timezoneMode = localStorage.getItem("timezoneMode") || "local";
 let stadiumLeafletMap = null;
 let stadiumMarkersLayer = null;
+let activeTooltipTarget = null;
+let floatingTooltip = null;
 const currentMatchWindowMs = 4 * 60 * 60 * 1000;
 const schedulePreviewLimit = 15;
 const scheduleShowMoreStep = 10;
@@ -399,6 +422,10 @@ const els = {
   matchesRemainingStat: document.querySelector("#matchesRemainingStat"),
   sort: document.querySelector("#sortSelect"),
   timezone: document.querySelector("#timezoneSelect"),
+  scheduleOddsSource: document.querySelector("#scheduleOddsSourceSelect"),
+  pathOddsSource: document.querySelector("#pathOddsSourceSelect"),
+  scheduleOddsSourceControl: document.querySelector("#scheduleOddsSourceControl"),
+  pathOddsSourceControl: document.querySelector("#pathOddsSourceControl"),
   timezoneStat: document.querySelector("#timezoneStat"),
   teamSort: document.querySelector("#teamSortSelect"),
   selectedTeamOnly: document.querySelector("#selectedTeamOnly"),
@@ -413,7 +440,8 @@ const els = {
   bracketScroll: document.querySelector("#bracketScroll"),
   bracketScrollInner: document.querySelector("#bracketScrollInner"),
   stadiumMap: document.querySelector("#stadiumMap"),
-  stadiumMapNote: document.querySelector("#stadiumMapNote")
+  stadiumMapNote: document.querySelector("#stadiumMapNote"),
+  diagnostics: document.querySelector("#diagnosticsGrid")
 };
 
 let syncingBracketScroll = false;
@@ -423,12 +451,15 @@ init();
 function init() {
   document.documentElement.lang = navigator.language || "en";
   updatePageTimestamp();
+  setupFloatingTooltips();
   els.select.innerHTML = [...allTeams]
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(team => `<option value="${team.name}">${team.code} - ${team.name} - FIFA #${team.ranking}</option>`)
     .join("");
   els.select.value = selectedTeam;
   els.timezone.value = timezoneMode;
+  els.scheduleOddsSource.value = oddsSourceMode;
+  els.pathOddsSource.value = oddsSourceMode;
 
   document.querySelectorAll(".tab").forEach(button => {
     button.addEventListener("click", () => switchView(button.dataset.view));
@@ -460,6 +491,17 @@ function init() {
     timezoneMode = event.target.value;
     localStorage.setItem("timezoneMode", timezoneMode);
     renderAll();
+  });
+
+  [els.scheduleOddsSource, els.pathOddsSource].forEach(select => {
+    select.addEventListener("change", event => {
+      oddsSourceMode = event.target.value;
+      localStorage.setItem("oddsSourceMode", oddsSourceMode);
+      els.scheduleOddsSource.value = oddsSourceMode;
+      els.pathOddsSource.value = oddsSourceMode;
+      renderSchedule();
+      renderPath();
+    });
   });
 
   els.teamSort.addEventListener("change", event => {
@@ -512,6 +554,7 @@ function init() {
     drawBracketConnectors();
     syncBracketScroll();
   });
+  window.addEventListener("hashchange", renderHashView);
 
   els.clearFilters.addEventListener("click", () => {
     searchTerm = "";
@@ -545,7 +588,80 @@ function init() {
   });
 
   renderAll();
+  renderHashView();
   refreshScores();
+}
+
+function setupFloatingTooltips() {
+  floatingTooltip = document.createElement("div");
+  floatingTooltip.className = "floating-tooltip";
+  floatingTooltip.setAttribute("role", "tooltip");
+  document.body.append(floatingTooltip);
+
+  const showFromEvent = event => {
+    const target = event.target.closest("[data-tip]");
+    if (!target || !target.dataset.tip) return;
+    showFloatingTooltip(target);
+  };
+
+  const hideFromEvent = event => {
+    if (!activeTooltipTarget || !activeTooltipTarget.contains(event.target)) return;
+    if (event.relatedTarget && activeTooltipTarget.contains(event.relatedTarget)) return;
+    hideFloatingTooltip();
+  };
+
+  document.addEventListener("pointerover", showFromEvent);
+  document.addEventListener("pointerout", hideFromEvent);
+  document.addEventListener("mouseover", showFromEvent);
+  document.addEventListener("mouseout", hideFromEvent);
+
+  document.addEventListener("focusin", event => {
+    const target = event.target.closest("[data-tip]");
+    if (!target || !target.dataset.tip) return;
+    showFloatingTooltip(target);
+  });
+
+  document.addEventListener("focusout", event => {
+    if (activeTooltipTarget && activeTooltipTarget.contains(event.target)) hideFloatingTooltip();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") hideFloatingTooltip();
+  });
+
+  window.addEventListener("scroll", () => positionFloatingTooltip(), true);
+  window.addEventListener("resize", () => positionFloatingTooltip());
+}
+
+function showFloatingTooltip(target) {
+  activeTooltipTarget = target;
+  floatingTooltip.textContent = target.dataset.tip;
+  floatingTooltip.classList.add("visible");
+  positionFloatingTooltip();
+}
+
+function hideFloatingTooltip() {
+  activeTooltipTarget = null;
+  if (floatingTooltip) floatingTooltip.classList.remove("visible");
+}
+
+function positionFloatingTooltip() {
+  if (!activeTooltipTarget || !floatingTooltip || !floatingTooltip.classList.contains("visible")) return;
+  const rect = activeTooltipTarget.getBoundingClientRect();
+  const gap = 10;
+  const edge = 10;
+  const tooltipRect = floatingTooltip.getBoundingClientRect();
+  const width = tooltipRect.width;
+  const height = tooltipRect.height;
+  const centeredX = rect.left + rect.width / 2 - width / 2;
+  const x = Math.max(edge, Math.min(centeredX, window.innerWidth - width - edge));
+  let y = rect.top - height - gap;
+
+  if (y < edge) y = rect.bottom + gap;
+  if (y + height > window.innerHeight - edge) y = Math.max(edge, window.innerHeight - height - edge);
+
+  floatingTooltip.style.left = `${x}px`;
+  floatingTooltip.style.top = `${y}px`;
 }
 
 function switchView(view) {
@@ -555,16 +671,97 @@ function switchView(view) {
     drawBracketConnectors();
     syncBracketScroll();
   }
+  if (view === "diagnostics") renderDiagnostics();
+}
+
+function renderHashView() {
+  if (window.location.hash === "#diagnostics") switchView("diagnostics");
 }
 
 function renderAll() {
   updateTimezoneLabels();
+  updateOddsSourceControls();
   updateOverviewStats();
   renderFocus();
   renderSchedule();
   renderGroups();
   renderPath();
   renderTeams();
+  renderDiagnostics();
+}
+
+function updateOddsSourceControls() {
+  const availability = getOddsSourceAvailability();
+  const unavailableText = "Not available from the last refresh. Try refreshing again in 5 min.";
+  const labels = {
+    auto: "Auto best available",
+    sportsbook: "Sportsbook odds",
+    polymarket: "Polymarket price",
+    fifa: "FIFA projection"
+  };
+
+  [els.scheduleOddsSource, els.pathOddsSource].forEach(select => {
+    if (!select) return;
+    [...select.options].forEach(option => {
+      if (option.value === "auto" || option.value === "fifa") {
+        option.disabled = false;
+        option.textContent = labels[option.value];
+        option.title = option.value === "fifa" ? "Always available as a rough ranking-based fallback." : "Uses sportsbook, then Polymarket, then FIFA projection.";
+        return;
+      }
+      const available = availability[option.value];
+      option.disabled = !available;
+      option.textContent = available ? labels[option.value] : `${labels[option.value]} (unavailable)`;
+      option.title = available ? `${labels[option.value]} available from the last refresh.` : unavailableText;
+    });
+    if (select.options[select.selectedIndex]?.disabled) {
+      oddsSourceMode = "auto";
+      localStorage.setItem("oddsSourceMode", oddsSourceMode);
+      select.value = oddsSourceMode;
+    }
+  });
+
+  const summary = `Sportsbook: ${availability.sportsbook ? "available" : "not available"}. Polymarket: ${availability.polymarket ? "available" : "not available"}. Unavailable sources may appear greyed out; try refreshing again in 5 min.`;
+  [els.scheduleOddsSourceControl, els.pathOddsSourceControl].forEach(control => {
+    if (!control) return;
+    control.title = summary;
+    control.classList.toggle("has-unavailable", !availability.sportsbook || !availability.polymarket);
+  });
+}
+
+function getOddsSourceAvailability() {
+  return matches.reduce((availability, match) => {
+    if (match.oddsBySource?.sportsbook) availability.sportsbook = true;
+    if (match.oddsBySource?.polymarket) availability.polymarket = true;
+    return availability;
+  }, { sportsbook: false, polymarket: false, fifa: true });
+}
+
+function renderDiagnostics() {
+  if (!els.diagnostics) return;
+  const availability = getOddsSourceAvailability();
+  const sourceCounts = matches.reduce((counts, match) => {
+    if (match.oddsBySource?.sportsbook) counts.sportsbook += 1;
+    if (match.oddsBySource?.polymarket) counts.polymarket += 1;
+    return counts;
+  }, { sportsbook: 0, polymarket: 0 });
+  const rows = [
+    ["Source availability", `Sportsbook: ${availability.sportsbook ? "available" : "not available"} (${sourceCounts.sportsbook} matched). Polymarket: ${availability.polymarket ? "available" : "not available"} (${sourceCounts.polymarket} matched). FIFA projection: always available.`],
+    ["Score refresh", diagnostics.score],
+    ["ESPN odds", diagnostics.espn],
+    ["Polymarket", diagnostics.polymarket],
+    ["Odds refresh", diagnostics.odds],
+    ["Odds matching", diagnostics.matching],
+    ["Current selector", `Mode: ${oddsSourceMode}. Auto priority: sportsbook -> Polymarket -> FIFA projection.`],
+    ["Likely causes", "ESPN odds must include moneyline prices and match local teams/times. Polymarket must be browser-accessible and expose a market with both teams as outcomes; futures or Yes/No markets are ignored."]
+  ];
+
+  els.diagnostics.innerHTML = rows.map(([title, body]) => `
+    <article class="diagnostic-card">
+      <b>${escapeHtml(title)}</b>
+      <p>${escapeHtml(body)}</p>
+    </article>
+  `).join("");
 }
 
 function updateOverviewStats() {
@@ -619,7 +816,7 @@ function renderSchedule() {
 
   const visible = filtered.slice(0, scheduleVisibleCount);
   const hiddenCount = Math.max(filtered.length - visible.length, 0);
-  els.scheduleCount.textContent = `Showing ${visible.length} of ${filtered.length} filtered matches (${matches.length} total) - ${scoreSyncStatus}`;
+  els.scheduleCount.textContent = `Showing ${visible.length} of ${filtered.length} filtered matches (${matches.length} total) - ${scoreSyncStatus}; ${oddsSyncStatus}`;
   updateShowMoreControls(hiddenCount);
   renderStadiumMap(filtered);
 
@@ -632,7 +829,7 @@ function renderSchedule() {
     const teamLine = match.teams.map(name => {
       const team = teamByName[name];
       if (!team) return `<span>${name}</span>`;
-      return `<span class="team-chip" data-tip="${escapeAttr(`${team.name}: FIFA #${team.ranking}. ${team.best}. Group ${team.group}.`)}"><span class="inline-code">${team.code}</span> ${renderTeamName(team)}</span>`;
+      return `<span class="team-chip" data-tip="${escapeAttr(`${team.name}: FIFA #${team.ranking}. ${team.best}. Group ${team.group}. ${formatTeamOddsTooltip(match, team.name)}`)}"><span class="inline-code">${team.code}</span> ${renderTeamName(team)}</span>`;
     }).join(`<span class="muted">vs</span>`);
     const timeStatus = getMatchTimeStatus(match);
     const scoreLine = formatScoreLine(match);
@@ -652,6 +849,7 @@ function renderSchedule() {
             <span>${match.status}</span>
             <span class="time-status ${timeStatus.key}">${timeStatus.label}</span>
           </div>
+          ${renderWinChanceBar(match)}
         </div>
         <div class="match-actions">
           ${scoreLine ? `<span class="score-pill">${scoreLine}</span>` : ""}
@@ -661,7 +859,7 @@ function renderSchedule() {
         <div class="match-detail">
           <div class="detail-box"><b>Broadcast</b>Primary: ${match.channel}. ESPN listed: ${formatChannelList(match)}.</div>
           <div class="detail-box"><b>Score source</b>${match.scoreUpdatedAt ? `Updated from external API at ${formatSyncTime(match.scoreUpdatedAt)}.` : "No live score returned for this fixture yet."}</div>
-          <div class="detail-box"><b>Stage impact</b>${match.impact}</div>
+          <div class="detail-box"><b>Stage impact</b>${getStageImpact(match)}</div>
           <div class="detail-box"><b>Context</b>${match.note}</div>
         </div>
       </article>
@@ -948,6 +1146,7 @@ function renderBracketMatch(match, selectedTeamName, bracketPath, roundIndex) {
       <div class="bracket-teams">
         ${entries.map((entry, index) => renderBracketTeam(entry, match, index, selectedTeamName, winner)).join("")}
       </div>
+      ${renderWinChanceBar(match, "compact")}
       <div class="bracket-meta">
         <span>${match.venue}</span>
         <span>${match.status}</span>
@@ -971,7 +1170,7 @@ function getSelectedBracketPath(teamName) {
     path.set(current.id, "path-active");
     const nextSlot = getWinnerSlotForMatch(current);
     if (!nextSlot) break;
-    current = matches.find(match => match.stage === "Knockout" && match.teams.includes(nextSlot));
+    current = matches.find(match => match.stage === "Knockout" && matchIncludesSlot(match, nextSlot));
   }
 
   return path;
@@ -997,10 +1196,14 @@ function getRelationshipTargets(match) {
   return [getWinnerSlotForMatch(match), getLoserSlotForMatch(match)]
     .filter(Boolean)
     .map(slot => {
-      const target = matches.find(item => item.stage === "Knockout" && item.teams.includes(slot));
+      const target = matches.find(item => item.stage === "Knockout" && matchIncludesSlot(item, slot));
       return target ? { target, slot } : null;
     })
     .filter(Boolean);
+}
+
+function matchIncludesSlot(match, slot) {
+  return match.teams.includes(slot) || (match.sourceSlots || []).includes(slot);
 }
 
 function getRoundMatchNumber(match) {
@@ -1110,7 +1313,7 @@ function renderConnectorPath({ source, target, slot }, bracketRect, path) {
 }
 
 function getBracketMatchTooltip(match, entries) {
-  return `${match.round} ${match.id}. ${formatDate(match.date)}. ${match.venue}. Broadcast: ${formatChannelList(match)}. ${entries.map(entry => formatTeamPlain(entry.name)).join(" vs ")}.`;
+  return `${match.round} ${match.id}. ${formatDate(match.date)}. ${match.venue}. Broadcast: ${formatChannelList(match)}. ${entries.map(entry => formatTeamPlain(entry.name)).join(" vs ")}. ${formatMatchOddsTooltip(match)}`;
 }
 
 function renderBracketTeam(entry, match, index, selectedTeamName, winner) {
@@ -1128,11 +1331,13 @@ function renderBracketTeam(entry, match, index, selectedTeamName, winner) {
 }
 
 function getResolvedBracketTeams(match) {
-  return match.teams.map(name => {
+  const slots = match.sourceSlots || match.teams;
+  return match.teams.map((name, index) => {
     const directTeam = teamByName[name];
     if (directTeam) return { name, team: directTeam, resolved: true };
-    const resolved = resolveBracketSlot(name);
-    return resolved ? { name: resolved.name, team: resolved, resolved: true } : { name, team: null, resolved: false };
+    const slotName = slots[index] || name;
+    const resolved = resolveBracketSlot(slotName);
+    return resolved ? { name: resolved.name, team: resolved, resolved: true } : { name: slotName, team: null, resolved: false };
   });
 }
 
@@ -1142,6 +1347,8 @@ function resolveBracketSlot(slotName) {
     const [, group, place] = groupSlot;
     return getLockedGroupTeam(group, place === "Winner" ? 1 : 2);
   }
+  const thirdPlaceSlot = String(slotName).match(/^Third Place Group ([A-L/]+)$/);
+  if (thirdPlaceSlot) return getLockedThirdPlaceTeam(thirdPlaceSlot[1].split("/"));
   return null;
 }
 
@@ -1150,6 +1357,17 @@ function getLockedGroupTeam(group, rank) {
   if (!groupMatches.length || !groupMatches.every(hasFinalScore)) return null;
   const row = getRawGroupStandings(group).find(item => item.rank === rank);
   return row ? teamByName[row.name] : null;
+}
+
+function getLockedThirdPlaceTeam(candidateGroups) {
+  if (!Object.keys(groups).every(group => getGroupMatches(group).every(hasFinalScore))) return null;
+  const qualifiedThirds = Object.keys(groups)
+    .map(group => getRawGroupStandings(group).find(item => item.rank === 3))
+    .filter(Boolean)
+    .sort(compareStandingTableRows)
+    .slice(0, 8);
+  const match = qualifiedThirds.find(row => candidateGroups.includes(row.group));
+  return match ? teamByName[match.name] : null;
 }
 
 function renderTeams() {
@@ -1218,6 +1436,7 @@ function buildKnockoutMatches() {
       round,
       group: "",
       teams: [homeSlot || `${round} entrant ${matchNumber}A`, awaySlot || `${round} entrant ${matchNumber}B`],
+      sourceSlots: [homeSlot || `${round} entrant ${matchNumber}A`, awaySlot || `${round} entrant ${matchNumber}B`],
       date,
       venue,
       channel,
@@ -1227,6 +1446,128 @@ function buildKnockoutMatches() {
       impact: "Single-elimination match. Extra time and penalties decide tied knockout games."
     };
   });
+}
+
+function getStageImpact(match) {
+  if (match.stage === "Group") return getGroupStageImpact(match);
+  return getKnockoutStageImpact(match);
+}
+
+function getGroupStageImpact(match) {
+  const matchday = getGroupMatchday(match);
+  if (matchday === 3) return getFinalGroupMatchImpact(match);
+
+  const rows = getRawGroupStandings(match.group);
+  const [homeName, awayName] = match.teams;
+  const home = rows.find(row => row.name === homeName);
+  const away = rows.find(row => row.name === awayName);
+  const remainingAfter = Math.max(0, 3 - matchday);
+
+  if (hasFinalScore(match)) {
+    const winner = getMatchWinner(match);
+    if (!winner) return `${formatTeamPlain(homeName)} and ${formatTeamPlain(awayName)} each took a point; both still have ${remainingAfter} group match${remainingAfter === 1 ? "" : "es"} to shape the automatic-advance race.`;
+    return `${formatTeamPlain(winner)} banked three points; ${formatTeamPlain(winner === homeName ? awayName : homeName)} now has less margin before the final group matches.`;
+  }
+
+  return `${formatTeamPlain(homeName)} enter on ${home?.points || 0} point${home?.points === 1 ? "" : "s"} and ${formatTeamPlain(awayName)} on ${away?.points || 0}; a win is worth three points, while a draw keeps both tied to the third-place bubble math.`;
+}
+
+function getFinalGroupMatchImpact(match) {
+  const [homeName, awayName] = match.teams;
+  if (hasFinalScore(match)) {
+    const rows = getRawGroupStandings(match.group);
+    return [homeName, awayName].map(name => {
+      const row = rows.find(item => item.name === name);
+      return `${formatTeamPlain(name)} finished ${ordinal(row?.rank || 0)} in Group ${match.group} with ${row?.points || 0} point${row?.points === 1 ? "" : "s"} (${getGroupOutcomeLabel(row?.rank || 0)}).`;
+    }).join(" ");
+  }
+
+  const homeScenarios = getFinalGroupScenarios(match, homeName);
+  const awayScenarios = getFinalGroupScenarios(match, awayName);
+  return `${formatTeamPlain(homeName)}: ${formatScenarioSet(homeScenarios)}. ${formatTeamPlain(awayName)}: ${formatScenarioSet(awayScenarios)}. Goal difference is the first pressure point if teams land level on points.`;
+}
+
+function getFinalGroupScenarios(match, teamName) {
+  const outcomes = [
+    { key: "win", score: teamName === match.teams[0] ? [1, 0] : [0, 1] },
+    { key: "draw", score: [0, 0] },
+    { key: "loss", score: teamName === match.teams[0] ? [0, 1] : [1, 0] }
+  ];
+  return outcomes.map(outcome => {
+    const rows = simulateGroupTable(match, outcome.score[0], outcome.score[1]);
+    const row = rows.find(item => item.name === teamName);
+    return { key: outcome.key, rank: row.rank, label: getGroupOutcomeLabel(row.rank) };
+  });
+}
+
+function simulateGroupTable(match, homeGoals, awayGoals) {
+  const rows = getRawGroupStandings(match.group, { excludeMatchId: match.id }).map(row => ({ ...row }));
+  const rowByName = Object.fromEntries(rows.map(row => [row.name, row]));
+  applyGroupResultToRows(rowByName, match.teams[0], match.teams[1], homeGoals, awayGoals);
+  rows.forEach(row => {
+    row.gd = row.gf - row.ga;
+  });
+  return rows.sort(compareStandingTableRows).map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+function formatScenarioSet(scenarios) {
+  return scenarios.map(item => `${item.key} -> ${item.label}`).join(", ");
+}
+
+function getGroupOutcomeLabel(rank) {
+  if (rank <= 2) return "auto-advance";
+  if (rank === 3) return "third-place bubble";
+  return "likely out";
+}
+
+function ordinal(value) {
+  if (!value) return "unknown";
+  const suffix = value === 1 ? "st" : value === 2 ? "nd" : value === 3 ? "rd" : "th";
+  return `${value}${suffix}`;
+}
+
+function getGroupMatchday(match) {
+  const value = String(match.round || "").match(/Matchday (\d+)/i);
+  return value ? Number(value[1]) : 0;
+}
+
+function getKnockoutStageImpact(match) {
+  if (match.round === "Final") return "Winner lifts the World Cup; loser finishes runner-up.";
+  if (match.round === "Third-place match") return "Winner finishes third; loser finishes fourth.";
+
+  const nextSlot = getWinnerSlotForMatch(match);
+  const nextMatch = nextSlot ? matches.find(item => item.stage === "Knockout" && item.teams.includes(nextSlot)) : null;
+  if (!nextMatch) return "Winner advances; loser is eliminated.";
+
+  const opponentSlot = nextMatch.teams.find(team => team !== nextSlot);
+  const projectedOpponent = projectSlotWinner(opponentSlot);
+  const nextRound = nextMatch.round.toLowerCase();
+  if (projectedOpponent) {
+    return `Winner advances to the ${nextRound} and will likely face ${formatTeamPlain(projectedOpponent.name)} (${projectedOpponent.reason}); loser is eliminated.`;
+  }
+  return `Winner advances to the ${nextRound}; loser is eliminated.`;
+}
+
+function projectSlotWinner(slot) {
+  if (!slot) return null;
+  const directTeam = teamByName[slot];
+  if (directTeam) return { name: directTeam.name, reason: "already locked into that slot" };
+
+  const source = matches.find(match => getWinnerSlotForMatch(match) === slot);
+  if (!source) return null;
+  return projectMatchWinner(source);
+}
+
+function projectMatchWinner(match) {
+  const [homeName, awayName] = match.teams;
+  const selectedOdds = getSelectedOdds(match);
+  const favoriteFromOdds = selectedOdds?.favorite && teamByName[selectedOdds.favorite] ? teamByName[selectedOdds.favorite] : null;
+  if (favoriteFromOdds) return { name: favoriteFromOdds.name, reason: `favored by ${selectedOdds.source || "listed odds"}` };
+
+  const teams = [teamByName[homeName], teamByName[awayName]].filter(Boolean);
+  if (teams.length < 2) return teams[0] ? { name: teams[0].name, reason: "only resolved team in the feeder match" } : null;
+  const favorite = teams.sort((a, b) => a.ranking - b.ranking)[0];
+  return { name: favorite.name, reason: `FIFA-rank projection, #${favorite.ranking}` };
 }
 
 function getStandings(group) {
@@ -1252,31 +1593,7 @@ function getStandings(group) {
     .filter(match => match.stage === "Group" && match.group === group && hasResultScore(match))
     .forEach(match => {
       const [homeName, awayName] = match.teams;
-      const home = rowByName[homeName];
-      const away = rowByName[awayName];
-      if (!home || !away) return;
-      const homeGoals = Number(match.score.home);
-      const awayGoals = Number(match.score.away);
-      home.played += 1;
-      away.played += 1;
-      home.gf += homeGoals;
-      home.ga += awayGoals;
-      away.gf += awayGoals;
-      away.ga += homeGoals;
-      if (homeGoals > awayGoals) {
-        home.won += 1;
-        away.lost += 1;
-        home.points += 3;
-      } else if (awayGoals > homeGoals) {
-        away.won += 1;
-        home.lost += 1;
-        away.points += 3;
-      } else {
-        home.drawn += 1;
-        away.drawn += 1;
-        home.points += 1;
-        away.points += 1;
-      }
+      applyGroupResultToRows(rowByName, homeName, awayName, Number(match.score.home), Number(match.score.away));
     });
 
   rows.forEach(row => {
@@ -1345,10 +1662,11 @@ function getKnockoutStatus(teamName) {
   return null;
 }
 
-function getRawGroupStandings(group) {
+function getRawGroupStandings(group, options = {}) {
   const rows = groups[group].map(([name, code, best, ranking], index) => ({
     name,
     code,
+    group,
     flagCode: countryFlagCodes[name] || "",
     best,
     ranking,
@@ -1363,36 +1681,38 @@ function getRawGroupStandings(group) {
     sort: index
   }));
   const rowByName = Object.fromEntries(rows.map(row => [row.name, row]));
-  getGroupMatches(group).filter(hasResultScore).forEach(match => {
+  getGroupMatches(group).filter(match => match.id !== options.excludeMatchId).filter(hasResultScore).forEach(match => {
     const [homeName, awayName] = match.teams;
-    const home = rowByName[homeName];
-    const away = rowByName[awayName];
-    if (!home || !away) return;
-    const homeGoals = Number(match.score.home);
-    const awayGoals = Number(match.score.away);
-    home.played += 1;
-    away.played += 1;
-    home.gf += homeGoals;
-    home.ga += awayGoals;
-    away.gf += awayGoals;
-    away.ga += homeGoals;
-    if (homeGoals > awayGoals) {
-      home.won += 1;
-      away.lost += 1;
-      home.points += 3;
-    } else if (awayGoals > homeGoals) {
-      away.won += 1;
-      home.lost += 1;
-      away.points += 3;
-    } else {
-      home.drawn += 1;
-      away.drawn += 1;
-      home.points += 1;
-      away.points += 1;
-    }
+    applyGroupResultToRows(rowByName, homeName, awayName, Number(match.score.home), Number(match.score.away));
   });
   rows.forEach(row => row.gd = row.gf - row.ga);
   return rows.sort(compareStandingTableRows).map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+function applyGroupResultToRows(rowByName, homeName, awayName, homeGoals, awayGoals) {
+  const home = rowByName[homeName];
+  const away = rowByName[awayName];
+  if (!home || !away) return;
+  home.played += 1;
+  away.played += 1;
+  home.gf += homeGoals;
+  home.ga += awayGoals;
+  away.gf += awayGoals;
+  away.ga += homeGoals;
+  if (homeGoals > awayGoals) {
+    home.won += 1;
+    away.lost += 1;
+    home.points += 3;
+  } else if (awayGoals > homeGoals) {
+    away.won += 1;
+    home.lost += 1;
+    away.points += 3;
+  } else {
+    home.drawn += 1;
+    away.drawn += 1;
+    home.points += 1;
+    away.points += 1;
+  }
 }
 
 function getGroupMatches(group) {
@@ -1458,15 +1778,286 @@ function averageMatchRank(match) {
 async function refreshScores() {
   try {
     scoreSyncStatus = "Checking scores...";
+    oddsSyncStatus = "Checking odds...";
     renderSchedule();
     const updates = await fetchScoreUpdates();
     const result = applyScoreUpdates(updates);
+    const resolvedFixtures = syncResolvedKnockoutFixtures();
+    if (resolvedFixtures) result.fixtures += resolvedFixtures;
+    diagnostics.score = `${updates.length} score/fixture update${updates.length === 1 ? "" : "s"} received; ${result.scores} score${result.scores === 1 ? "" : "s"}, ${result.fixtures} fixture field${result.fixtures === 1 ? "" : "s"}, and ${result.statuses} status${result.statuses === 1 ? "" : "es"} applied.`;
     scoreSyncStatus = formatScoreSyncStatus(result);
   } catch (error) {
     scoreSyncStatus = "Scores unavailable";
+    diagnostics.score = error.message || "Score request failed";
     console.warn("Score refresh failed:", error);
   }
+  try {
+    const oddsUpdates = await fetchOddsUpdates();
+    const oddsResult = applyOddsUpdates(oddsUpdates);
+    diagnostics.odds = `${oddsUpdates.length} odds update${oddsUpdates.length === 1 ? "" : "s"} received; ${oddsResult.odds} matched, ${oddsResult.unmatched} unmatched.`;
+    oddsSyncStatus = formatOddsSyncStatus(oddsResult);
+  } catch (error) {
+    oddsDiagnostic = error.message || "Odds request failed";
+    oddsSyncStatus = `Odds unavailable: ${oddsDiagnostic}`;
+    diagnostics.odds = oddsDiagnostic;
+    console.warn("Odds refresh failed:", error);
+  }
   renderAll();
+}
+
+async function fetchOddsUpdates() {
+  const updates = [];
+  const diagnosticParts = [];
+  try {
+    const espnUpdates = await fetchEspnOddsUpdates();
+    updates.push(...espnUpdates);
+    diagnosticParts.push(`ESPN: ${diagnostics.espn}`);
+  } catch (error) {
+    const message = error.message || "request failed";
+    diagnostics.espn = `Unavailable: ${message}`;
+    diagnosticParts.push(`ESPN unavailable: ${message}`);
+  }
+  if (oddsApi.url) {
+    try {
+      const response = await fetch(oddsApi.url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Odds API proxy returned ${response.status}`);
+      const payload = await response.json();
+      const proxyUpdates = normalizeOddsFeed(payload);
+      updates.push(...proxyUpdates);
+      diagnosticParts.push(`Proxy: ${describeGenericOddsPayload(payload, proxyUpdates)}`);
+    } catch (error) {
+      diagnosticParts.push(`Proxy unavailable: ${error.message || "request failed"}`);
+    }
+  } else if (oddsApi.key) {
+    try {
+      const url = buildOddsApiUrl();
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`The Odds API returned ${response.status}`);
+      const payload = await response.json();
+      const apiUpdates = normalizeOddsApiEvents(payload);
+      updates.push(...apiUpdates);
+      diagnosticParts.push(`Sportsbook: ${describeTheOddsApiPayload(payload, apiUpdates)}`);
+    } catch (error) {
+      diagnosticParts.push(`Sportsbook unavailable: ${error.message || "request failed"}`);
+    }
+  } else {
+    diagnosticParts.push("Sportsbook: no API key or proxy configured");
+  }
+
+  if (polymarketApi.enabled) {
+    try {
+      const polymarketUpdates = await fetchPolymarketOddsUpdates();
+      updates.push(...polymarketUpdates);
+      diagnosticParts.push(`Polymarket: ${oddsDiagnostic}`);
+    } catch (error) {
+      const message = error.message || "request failed";
+      diagnostics.polymarket = `Unavailable: ${message}. If this says Failed to fetch in the browser, the likely cause is CORS.`;
+      diagnosticParts.push(`Polymarket unavailable: ${message}`);
+    }
+  }
+
+  if (!updates.length && !diagnosticParts.length) diagnosticParts.push("no odds source configured");
+  oddsDiagnostic = diagnosticParts.join("; ");
+  return updates;
+}
+
+async function fetchPolymarketOddsUpdates() {
+  const response = await fetch(polymarketApi.url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Polymarket returned ${response.status}`);
+  const payload = await response.json();
+  const updates = normalizePolymarketEvents(payload);
+  oddsDiagnostic = describePolymarketPayload(payload, updates);
+  diagnostics.polymarket = oddsDiagnostic;
+  return updates;
+}
+
+async function fetchEspnOddsUpdates() {
+  const response = await fetch(scoreApi.espnUrl, { cache: "no-store" });
+  if (!response.ok) throw new Error(`ESPN scoreboard returned ${response.status}`);
+  const payload = await response.json();
+  diagnostics.espn = describeEspnPayload(payload);
+  return normalizeEspnScores(payload).filter(update => update.odds);
+}
+
+function buildOddsApiUrl() {
+  const params = new URLSearchParams({
+    apiKey: oddsApi.key,
+    regions: "us",
+    markets: "h2h",
+    oddsFormat: "american",
+    dateFormat: "iso",
+    bookmakers: oddsApi.bookmakers
+  });
+  params.set("commenceTimeFrom", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+  params.set("commenceTimeTo", new Date("2026-07-20T04:00:00Z").toISOString());
+  return `${oddsApi.baseUrl}/${encodeURIComponent(oddsApi.sportKey)}/odds/?${params.toString()}`;
+}
+
+function normalizeOddsFeed(payload) {
+  const items = Array.isArray(payload) ? payload : payload.matches || payload.games || payload.events || [];
+  if (items.some(item => item.bookmakers)) return normalizeOddsApiEvents(items);
+  return items.map(item => ({
+    id: item.id || item.matchId,
+    homeTeam: item.homeTeam || item.home || item.teams?.home,
+    awayTeam: item.awayTeam || item.away || item.teams?.away,
+    date: item.date || item.utcDate || item.kickoff || item.commence_time,
+    odds: normalizeOdds(item.odds || item.probabilities || item.prediction, item.homeTeam || item.home || item.teams?.home, item.awayTeam || item.away || item.teams?.away)
+  })).filter(update => update.odds);
+}
+
+function normalizeOddsApiEvents(events) {
+  return (events || []).map(event => ({
+    id: event.id,
+    homeTeam: event.home_team,
+    awayTeam: event.away_team,
+    date: event.commence_time,
+    odds: buildConsensusOdds(event)
+  })).filter(update => update.odds);
+}
+
+function normalizePolymarketEvents(payload) {
+  const events = Array.isArray(payload) ? payload : payload.events || payload.data || [];
+  return events.flatMap(event => normalizePolymarketEvent(event));
+}
+
+function normalizePolymarketEvent(event) {
+  const markets = event.markets || [];
+  return markets.map(market => {
+    const outcomes = parseMaybeJsonArray(market.outcomes || market.outcomeNames || market.tokens);
+    const prices = parseMaybeJsonArray(market.outcomePrices || market.prices || market.lastPrices);
+    const entries = outcomes.map((outcome, index) => {
+      const name = canonicalTeamName(typeof outcome === "string" ? outcome : outcome?.name || outcome?.outcome);
+      const price = Number(prices[index] ?? outcome?.price ?? outcome?.lastPrice);
+      return name && Number.isFinite(price) ? [name, normalizeProbabilityScale(price)] : null;
+    }).filter(Boolean);
+
+    if (entries.length < 2) return null;
+    const teams = entries.filter(([name]) => teamByName[name]);
+    if (teams.length !== 2) return null;
+    const total = teams.reduce((sum, [, probability]) => sum + probability, 0);
+    if (!total) return null;
+    const probabilities = Object.fromEntries(teams.map(([name, probability]) => [name, probability / total]));
+    const favorite = teams.sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+    return {
+      id: event.id || market.id,
+      homeTeam: teams[0][0],
+      awayTeam: teams[1][0],
+      date: event.startDate || event.start_date || event.endDate || event.end_date || market.endDate || market.end_date,
+      odds: {
+        favorite,
+        probabilities,
+        source: "Polymarket market price",
+        sourceType: "prediction-market",
+        updatedAt: new Date().toISOString()
+      }
+    };
+  }).filter(Boolean);
+}
+
+function parseMaybeJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function buildConsensusOdds(event) {
+  const snapshots = [];
+  (event.bookmakers || []).forEach(bookmaker => {
+    const market = (bookmaker.markets || []).find(item => item.key === "h2h");
+    if (!market?.outcomes?.length) return;
+    const raw = market.outcomes.map(outcome => ({
+      name: canonicalTeamName(outcome.name) || normalizeDrawName(outcome.name),
+      price: Number(outcome.price),
+      probability: americanOddsToProbability(Number(outcome.price))
+    })).filter(outcome => outcome.name && Number.isFinite(outcome.probability));
+    const total = raw.reduce((sum, outcome) => sum + outcome.probability, 0);
+    if (!total) return;
+    snapshots.push({
+      bookmaker: bookmaker.title || bookmaker.key,
+      updatedAt: bookmaker.last_update,
+      probabilities: Object.fromEntries(raw.map(outcome => [outcome.name, outcome.probability / total]))
+    });
+  });
+  if (!snapshots.length) return null;
+
+  const probabilities = {};
+  snapshots.forEach(snapshot => {
+    Object.entries(snapshot.probabilities).forEach(([name, probability]) => {
+      probabilities[name] = (probabilities[name] || 0) + probability / snapshots.length;
+    });
+  });
+  const teamEntries = Object.entries(probabilities).filter(([name]) => teamByName[name]);
+  const favorite = teamEntries.sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  const updatedTimes = snapshots.map(snapshot => snapshot.updatedAt).filter(Boolean).sort();
+  return {
+    favorite,
+    probabilities,
+    source: "The Odds API consensus",
+    sourceType: "sportsbook",
+    bookmakers: snapshots.map(snapshot => snapshot.bookmaker),
+    updatedAt: updatedTimes[updatedTimes.length - 1] || new Date().toISOString()
+  };
+}
+
+function americanOddsToProbability(price) {
+  if (!Number.isFinite(price) || price === 0) return NaN;
+  if (price > 1 && price < 20) return 1 / price;
+  return price > 0 ? 100 / (price + 100) : Math.abs(price) / (Math.abs(price) + 100);
+}
+
+function normalizeDrawName(name) {
+  return /^draw$/i.test(String(name || "").trim()) ? "Draw" : "";
+}
+
+function applyOddsUpdates(updates) {
+  let odds = 0;
+  let unmatched = 0;
+  const unmatchedSamples = [];
+  updates.forEach(update => {
+    const match = findMatchForOdds(update);
+    if (!match || !update.odds) {
+      unmatched += 1;
+      if (unmatchedSamples.length < 3) unmatchedSamples.push(`${update.homeTeam || "?"} vs ${update.awayTeam || "?"}${update.date ? ` (${formatMonthDay(update.date)})` : ""}`);
+      return;
+    }
+    attachMatchOdds(match, update.odds);
+    odds += 1;
+  });
+  diagnostics.matching = unmatchedSamples.length ? `${odds} odds update${odds === 1 ? "" : "s"} matched; ${unmatched} unmatched. Samples: ${unmatchedSamples.join("; ")}.` : `${odds} odds update${odds === 1 ? "" : "s"} matched; ${unmatched} unmatched.`;
+  return { odds, received: updates.length, unmatched };
+}
+
+function attachMatchOdds(match, odds) {
+  if (!match || !odds) return;
+  const source = getOddsSourceKey(odds);
+  match.oddsBySource = { ...(match.oddsBySource || {}), [source]: odds };
+  match.odds = getAutoOdds(match);
+}
+
+function getOddsSourceKey(odds) {
+  if (odds?.sourceType === "prediction-market") return "polymarket";
+  return "sportsbook";
+}
+
+function getAutoOdds(match) {
+  return match.oddsBySource?.sportsbook || match.oddsBySource?.polymarket || null;
+}
+
+function findMatchForOdds(update) {
+  return matches.find(match => {
+    const apiTeams = [canonicalTeamName(update.homeTeam), canonicalTeamName(update.awayTeam)].filter(Boolean);
+    if (apiTeams.length !== 2 || !teamsMatchIgnoringOrder(match.teams, apiTeams)) return false;
+    if (!update.date && update.odds?.sourceType === "prediction-market") return true;
+    if (!update.date) return false;
+    const kickoffGap = Math.abs(new Date(match.date).getTime() - new Date(update.date).getTime());
+    const allowedGap = update.odds?.sourceType === "prediction-market" ? 7 * 24 * 60 * 60 * 1000 : 12 * 60 * 60 * 1000;
+    return !Number.isNaN(kickoffGap) && kickoffGap <= allowedGap;
+  });
 }
 
 async function fetchScoreUpdates() {
@@ -1495,7 +2086,15 @@ async function fetchEspnScoreUpdates() {
   const response = await fetch(scoreApi.espnUrl, { cache: "no-store" });
   if (!response.ok) throw new Error(`ESPN scoreboard returned ${response.status}`);
   const payload = await response.json();
+  diagnostics.espn = describeEspnPayload(payload);
   return normalizeEspnScores(payload);
+}
+
+function describeEspnPayload(payload) {
+  const events = payload.events || [];
+  const withOdds = events.filter(event => event.competitions?.[0]?.odds).length;
+  const withMoneyline = events.filter(event => event.competitions?.[0]?.odds?.some?.(item => item?.moneyline)).length;
+  return `${events.length} events returned; ${withOdds} include odds; ${withMoneyline} include nested moneyline prices.`;
 }
 
 function normalizeProxyScores(payload) {
@@ -1511,6 +2110,7 @@ function normalizeProxyScores(payload) {
     clock: item.clock,
     displayClock: item.displayClock || item.clockDisplay || item.gameClock,
     statusDetail: item.statusDetail || item.shortDetail || item.detail,
+    odds: normalizeOdds(item.odds || item.probabilities || item.prediction, item.homeTeam || item.home || item.teams?.home, item.awayTeam || item.away || item.teams?.away),
     homeScore: item.homeScore ?? item.score?.home ?? item.score?.fullTime?.home,
     awayScore: item.awayScore ?? item.score?.away ?? item.score?.fullTime?.away,
     status: item.status || item.state,
@@ -1527,6 +2127,7 @@ function normalizeFootballDataScores(payload) {
     clock: item.clock,
     displayClock: item.displayClock,
     statusDetail: item.status,
+    odds: normalizeOdds(item.odds, item.homeTeam?.name, item.awayTeam?.name),
     homeScore: item.score?.fullTime?.home ?? item.score?.regularTime?.home,
     awayScore: item.score?.fullTime?.away ?? item.score?.regularTime?.away,
     status: item.status,
@@ -1544,6 +2145,7 @@ function normalizeEspnScores(payload) {
     const hasResult = isResultStatus(status);
     const channels = competition?.broadcasts?.flatMap(broadcast => broadcast.names || []) || [];
     const statusInfo = competition?.status || event.status;
+    const odds = normalizeEspnOdds(competition?.odds, home?.team?.displayName, away?.team?.displayName);
     return {
       homeTeam: home?.team?.displayName,
       awayTeam: away?.team?.displayName,
@@ -1554,12 +2156,95 @@ function normalizeEspnScores(payload) {
       clock: statusInfo?.clock,
       displayClock: statusInfo?.displayClock,
       statusDetail: statusInfo?.type?.shortDetail || statusInfo?.type?.detail || statusInfo?.type?.description,
+      odds,
       homeScore: hasResult ? home?.score : null,
       awayScore: hasResult ? away?.score : null,
       status,
       updatedAt: new Date().toISOString()
     };
   });
+}
+
+function normalizeEspnOdds(odds, homeName, awayName) {
+  const item = Array.isArray(odds) ? odds[0] : odds;
+  if (!item) return null;
+  return normalizeOdds(item, homeName, awayName);
+}
+
+function normalizeOdds(odds, homeName, awayName) {
+  if (!odds) return null;
+  const moneyline = normalizeMoneylineOdds(odds, homeName, awayName);
+  if (moneyline) return moneyline;
+
+  const favoriteName = odds.favorite || odds.favoredTeam || odds.team || odds.winner;
+  const favorite = canonicalTeamName(favoriteName);
+  if (favorite) return { favorite, source: odds.provider || odds.source || "listed odds", sourceType: "sportsbook", probabilities: normalizeProvidedProbabilities(odds, homeName, awayName) };
+
+  if (odds.homeTeamOdds?.favorite) {
+    const projected = canonicalTeamName(homeName);
+    return projected ? { favorite: projected, source: odds.provider || "listed odds", sourceType: "sportsbook", probabilities: normalizeProvidedProbabilities(odds, homeName, awayName) } : null;
+  }
+  if (odds.awayTeamOdds?.favorite) {
+    const projected = canonicalTeamName(awayName);
+    return projected ? { favorite: projected, source: odds.provider || "listed odds", sourceType: "sportsbook", probabilities: normalizeProvidedProbabilities(odds, homeName, awayName) } : null;
+  }
+
+  const homeProbability = Number(odds.homeWinProbability ?? odds.homeProbability ?? odds.home);
+  const awayProbability = Number(odds.awayWinProbability ?? odds.awayProbability ?? odds.away);
+  if (Number.isFinite(homeProbability) && Number.isFinite(awayProbability) && homeProbability !== awayProbability) {
+    const projected = homeProbability > awayProbability ? canonicalTeamName(homeName) : canonicalTeamName(awayName);
+    const probabilities = normalizeProvidedProbabilities(odds, homeName, awayName);
+    return projected ? { favorite: projected, source: "listed win probability", sourceType: "sportsbook", probabilities } : null;
+  }
+  return null;
+}
+
+function normalizeMoneylineOdds(odds, homeName, awayName) {
+  const moneyline = odds?.moneyline;
+  if (!moneyline) return null;
+  const home = canonicalTeamName(homeName);
+  const away = canonicalTeamName(awayName);
+  const entries = [];
+  const homePrice = parseAmericanOdds(moneyline.home?.close?.odds ?? moneyline.home?.odds ?? moneyline.home);
+  const awayPrice = parseAmericanOdds(moneyline.away?.close?.odds ?? moneyline.away?.odds ?? moneyline.away);
+  const drawPrice = parseAmericanOdds(moneyline.draw?.close?.odds ?? moneyline.draw?.odds ?? odds.drawOdds?.moneyLine);
+  if (home && Number.isFinite(homePrice)) entries.push([home, americanOddsToProbability(homePrice)]);
+  if (away && Number.isFinite(awayPrice)) entries.push([away, americanOddsToProbability(awayPrice)]);
+  if (Number.isFinite(drawPrice)) entries.push(["Draw", americanOddsToProbability(drawPrice)]);
+  const total = entries.reduce((sum, [, probability]) => sum + probability, 0);
+  if (!total || entries.length < 2) return null;
+  const probabilities = Object.fromEntries(entries.map(([name, probability]) => [name, probability / total]));
+  const favorite = [home, away].filter(Boolean).sort((a, b) => (probabilities[b] || 0) - (probabilities[a] || 0))[0] || "";
+  return {
+    favorite,
+    source: odds.provider?.displayName || odds.provider?.name || odds.source || "ESPN listed odds",
+    sourceType: "sportsbook",
+    probabilities
+  };
+}
+
+function parseAmericanOdds(value) {
+  if (value == null) return NaN;
+  const cleaned = String(value).replace(/[^\d+-]/g, "");
+  return Number(cleaned);
+}
+
+function normalizeProvidedProbabilities(odds, homeName, awayName) {
+  const home = canonicalTeamName(homeName);
+  const away = canonicalTeamName(awayName);
+  const entries = [];
+  const homeProbability = Number(odds.homeWinProbability ?? odds.homeProbability ?? odds.home);
+  const awayProbability = Number(odds.awayWinProbability ?? odds.awayProbability ?? odds.away);
+  const drawProbability = Number(odds.drawProbability ?? odds.draw);
+  if (home && Number.isFinite(homeProbability)) entries.push([home, normalizeProbabilityScale(homeProbability)]);
+  if (away && Number.isFinite(awayProbability)) entries.push([away, normalizeProbabilityScale(awayProbability)]);
+  if (Number.isFinite(drawProbability)) entries.push(["Draw", normalizeProbabilityScale(drawProbability)]);
+  const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  return total ? Object.fromEntries(entries.map(([name, value]) => [name, value / total])) : null;
+}
+
+function normalizeProbabilityScale(value) {
+  return value > 1 ? value / 100 : value;
 }
 
 function formatEspnVenue(venue) {
@@ -1596,6 +2281,8 @@ function applyScoreUpdates(updates) {
       result.scores += 1;
     }
 
+    if (update.odds) attachMatchOdds(match, update.odds);
+
     const status = formatApiStatus(update.status);
     if (status && shouldApplyStatus(match, status) && match.status !== status) {
       match.status = status;
@@ -1623,6 +2310,159 @@ function formatScoreSyncStatus(result) {
   if (result.fixtures) parts.push(`${result.fixtures} fixtures`);
   if (result.statuses) parts.push(`${result.statuses} statuses`);
   return parts.length ? `Scores refreshed: ${parts.join(", ")} updated` : "Scores refreshed: no updates";
+}
+
+function formatOddsSyncStatus(result) {
+  if (!hasOddsConfig() && !polymarketApi.enabled) return "Odds not configured: set oddsApiKey or PATH_TO_CUP_ODDS_API_URL";
+  if (result.odds) {
+    const unmatched = result.unmatched ? `, ${result.unmatched} unmatched` : "";
+    return `Odds refreshed: ${result.odds} matches${unmatched} (${oddsDiagnostic})`;
+  }
+  return `Odds refreshed: 0 matches (${oddsDiagnostic})`;
+}
+
+function hasOddsConfig() {
+  return Boolean(oddsApi.url || oddsApi.key);
+}
+
+function describeGenericOddsPayload(payload, updates) {
+  const items = Array.isArray(payload) ? payload : payload.matches || payload.games || payload.events || [];
+  return `${items.length} odds item${items.length === 1 ? "" : "s"} returned, ${updates.length} usable update${updates.length === 1 ? "" : "s"}`;
+}
+
+function describeTheOddsApiPayload(events, updates) {
+  const items = Array.isArray(events) ? events : [];
+  const withBookmakers = items.filter(event => event.bookmakers?.length).length;
+  const withMoneyline = items.filter(event =>
+    (event.bookmakers || []).some(bookmaker =>
+      (bookmaker.markets || []).some(market => market.key === "h2h" && market.outcomes?.length)
+    )
+  ).length;
+  if (!items.length) return "The Odds API returned 0 events for the configured sport/date/bookmakers";
+  return `${items.length} event${items.length === 1 ? "" : "s"} returned, ${withBookmakers} with bookmakers, ${withMoneyline} with h2h markets, ${updates.length} usable update${updates.length === 1 ? "" : "s"}`;
+}
+
+function describePolymarketPayload(payload, updates) {
+  const events = Array.isArray(payload) ? payload : payload.events || payload.data || [];
+  const markets = events.reduce((total, event) => total + (event.markets?.length || 0), 0);
+  return `Polymarket checked ${events.length} event${events.length === 1 ? "" : "s"} / ${markets} market${markets === 1 ? "" : "s"}, ${updates.length} team-outcome match${updates.length === 1 ? "" : "es"} usable`;
+}
+
+function formatTeamOddsTooltip(match, teamName) {
+  const probability = getTeamWinProbability(match, teamName);
+  if (probability == null) return "Win chance: not enough matchup data yet.";
+  const draw = getOutcomeProbability(match, "Draw");
+  const drawText = draw == null ? "" : ` Draw ${formatPercent(draw)}.`;
+  return `Win chance: ${formatPercent(probability)}.${drawText} ${getOddsSourceSummary(match)}`;
+}
+
+function formatMatchOddsTooltip(match) {
+  const probabilities = getMatchProbabilities(match);
+  if (!probabilities) return "Win chance: not enough matchup data yet.";
+  const parts = match.teams
+    .filter(name => teamByName[name])
+    .map(name => `${name} ${formatPercent(probabilities[name] || 0)}`);
+  const draw = getOutcomeProbability(match, "Draw");
+  if (draw != null) parts.push(`Draw ${formatPercent(draw)}`);
+  const selectedOdds = getSelectedOdds(match);
+  const books = selectedOdds?.bookmakers?.length ? ` Books: ${selectedOdds.bookmakers.slice(0, 4).join(", ")}${selectedOdds.bookmakers.length > 4 ? "..." : ""}.` : "";
+  return `${parts.join(", ")}. ${getOddsSourceSummary(match)}${books}`;
+}
+
+function renderWinChanceBar(match, variant = "") {
+  const probabilities = getMatchProbabilities(match);
+  if (!probabilities) return "";
+  const teams = match.teams.filter(name => teamByName[name]);
+  if (teams.length !== 2) return "";
+  const segments = teams.map((name, index) => ({
+    name,
+    className: index === 0 ? "team-a" : "team-b",
+    probability: probabilities[name] || 0,
+    label: teamByName[name]?.code || name
+  }));
+  const draw = probabilities.Draw;
+  if (draw && match.stage === "Group") {
+    segments.splice(1, 0, { name: "Draw", className: "draw", probability: draw, label: "Draw" });
+  }
+  if (!segments.some(segment => segment.probability > 0)) return "";
+  return `
+    <div class="win-bar ${variant}" data-tip="${escapeAttr(formatMatchOddsTooltip(match))}">
+      <div class="win-bar-track">
+        ${segments.map(segment => `
+          <span class="win-segment ${segment.className}" style="--p:${Math.max(0, Math.min(100, segment.probability * 100)).toFixed(2)}%;" title="${escapeAttr(`${segment.name}: ${formatPercent(segment.probability)}`)}" aria-label="${escapeAttr(`${segment.name}: ${formatPercent(segment.probability)}`)}">
+            <span>${escapeHtml(segment.label)} ${formatPercent(segment.probability)}</span>
+          </span>
+        `).join("")}
+      </div>
+      <div class="win-bar-labels">
+        ${segments.map(segment => `<span class="${segment.className}"><b>${escapeHtml(segment.label)}</b> ${formatPercent(segment.probability)}</span>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function getTeamWinProbability(match, teamName) {
+  const probabilities = getMatchProbabilities(match);
+  return probabilities?.[canonicalTeamName(teamName) || teamName] ?? null;
+}
+
+function getOutcomeProbability(match, outcomeName) {
+  const probability = getMatchProbabilities(match)?.[outcomeName];
+  return Number.isFinite(probability) ? probability : null;
+}
+
+function getMatchProbabilities(match) {
+  const probabilities = getSelectedOdds(match)?.probabilities || (oddsSourceMode === "sportsbook" || oddsSourceMode === "polymarket" ? null : getRankProjectionProbabilities(match));
+  return normalizeDisplayedProbabilities(match, probabilities);
+}
+
+function getSelectedOdds(match) {
+  if (!match) return null;
+  if (oddsSourceMode === "sportsbook") return match.oddsBySource?.sportsbook || null;
+  if (oddsSourceMode === "polymarket") return match.oddsBySource?.polymarket || null;
+  if (oddsSourceMode === "fifa") return null;
+  return getAutoOdds(match);
+}
+
+function normalizeDisplayedProbabilities(match, probabilities) {
+  if (!probabilities) return null;
+  if (match.stage === "Group") return probabilities;
+  const teams = match.teams.filter(name => teamByName[name]);
+  const entries = teams.map(name => [name, Number(probabilities[name]) || 0]);
+  const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  if (!total) return null;
+  return Object.fromEntries(entries.map(([name, value]) => [name, value / total]));
+}
+
+function getRankProjectionProbabilities(match) {
+  const teams = match.teams.map(name => teamByName[name]).filter(Boolean);
+  if (teams.length !== 2) return null;
+  const strengths = teams.map(team => 1 / Math.max(team.ranking, 1));
+  const totalStrength = strengths[0] + strengths[1];
+  const drawShare = match.stage === "Group" ? 0.24 : 0;
+  const winShare = 1 - drawShare;
+  return {
+    [teams[0].name]: winShare * (strengths[0] / totalStrength),
+    [teams[1].name]: winShare * (strengths[1] / totalStrength),
+    ...(drawShare ? { Draw: drawShare } : {})
+  };
+}
+
+function getOddsSourceLabel(match) {
+  const selectedOdds = getSelectedOdds(match);
+  if (selectedOdds?.source) return selectedOdds.source;
+  return "FIFA-rank projection";
+}
+
+function getOddsSourceSummary(match) {
+  const selectedOdds = getSelectedOdds(match);
+  if (selectedOdds?.sourceType === "sportsbook") return `Sportsbook odds from ${getOddsSourceLabel(match)}; reflects listed bookmaker prices.`;
+  if (selectedOdds?.sourceType === "prediction-market") return `Polymarket market-implied price; reflects trader pricing, not sportsbook odds.`;
+  return "FIFA-rank projection; rough fallback, not betting odds.";
+}
+
+function formatPercent(value) {
+  return `${Math.round(value * 100)}%`;
 }
 
 function findMatchForScore(update) {
@@ -1657,6 +2497,21 @@ function updateMatchTeams(match, update) {
   match.teams = teams;
   match.note = match.stage === "Group" ? buildMatchContext(teams, match.group) : "Fixture teams updated from the external API as the bracket was resolved.";
   return true;
+}
+
+function syncResolvedKnockoutFixtures() {
+  let changed = 0;
+  matches.filter(match => match.stage === "Knockout" && hasPlaceholderTeam(match)).forEach(match => {
+    const entries = getResolvedBracketTeams(match);
+    if (entries.length !== 2 || entries.some(entry => !entry.resolved)) return;
+    const teams = entries.map(entry => entry.name);
+    if (match.teams.every((team, index) => team === teams[index])) return;
+    match.teams = teams;
+    if (match.status === "Pending qualifiers") match.status = "Scheduled";
+    match.note = "Fixture teams updated from locked qualification slots.";
+    changed += 1;
+  });
+  return changed;
 }
 
 function canUpdateFixtureTeams(update) {

@@ -11,6 +11,7 @@ A local/static web app for tracking the 2026 FIFA World Cup.
 - Team cards with FIFA-style country codes and best-ever World Cup result
 - Historical rivalry and matchup context in expandable game details
 - Knockout bracket visualization with selected-team highlighting and locked/eliminated status messaging
+- Win-chance bars with selectable source: sportsbook odds, Polymarket market price, or FIFA-rank projection
 - Search, filters, and sorting by date, A-Z, Z-A, and FIFA rank
 - Browser translation hints and a timezone selector for local browser time or UTC
 - Dynamic overview cards for active teams, active groups, and matches left
@@ -27,6 +28,8 @@ The app uses compact tags to keep dense tournament information readable.
 - `FOX` / `FS1`: expected English broadcast channel.
 - `Group D, Matchday 1`, venue, and status tags: match metadata.
 - `Upcoming`, `Started within 4h`, `Live 42'`, or `Previous`: time-window and live-clock status used by the schedule filter.
+- `Chance source`: selects Auto, Sportsbook odds, Polymarket price, or FIFA projection. Unavailable live sources are disabled after refresh.
+- `Win chance bar`: shows the selected source's implied win chance. Group matches may include draw probability; knockout matches normalize to win/loss only.
 - `+`: expands match details, including broadcast, score source, stage impact, and matchup context.
 
 ### Team and Path Tags
@@ -40,6 +43,7 @@ The app uses compact tags to keep dense tournament information readable.
 - `Best result`: the team's best historical World Cup finish.
 - `Optimal: Group winner`: the highlighted path assumption in the route view.
 - `Runner-up branch` and `Risk path`: diverging knockout routes if the team does not win the group.
+- Path win-chance bars use the same `Chance source` selector as the Schedule page.
 
 ### Score API Tags
 
@@ -68,6 +72,35 @@ Scores are checked on page refresh.
 By default, the app calls `api/scores`, which is intended to be a small serverless proxy that returns JSON shaped like `scores.sample.json`. If that proxy is unavailable, the app falls back to ESPN's public FIFA World Cup scoreboard feed. Do not commit paid/private API keys into `app.js`.
 
 The same refresh can also update fixtures as the tournament progresses. If the API returns known `homeTeam` / `awayTeam` names for a knockout match that still has placeholder entrants, the app replaces the placeholders with those teams. Include an app fixture `id` when possible; otherwise include the UTC `date` so the app can match a resolved knockout fixture by kickoff time. The proxy can also send `venue`, `channel`, or `channels` to update stadium and broadcast data.
+
+## Win Chance Sources
+
+The app can show win-chance bars from multiple sources:
+
+- `Auto best available`: uses sportsbook odds first, then Polymarket market price, then FIFA-rank projection.
+- `Sportsbook odds`: uses ESPN-listed moneyline odds when available, or The Odds API if configured.
+- `Polymarket price`: uses public Polymarket market prices when a market clearly has both teams as outcomes. Futures and Yes/No markets are ignored.
+- `FIFA projection`: always available; a rough ranking-based fallback, not betting odds.
+
+Unavailable sportsbook or Polymarket options are greyed out after refresh with a tooltip suggesting another refresh in 5 minutes.
+
+The Odds API still requires a key. For local testing only, you can set:
+
+```js
+localStorage.setItem("oddsApiKey", "YOUR_TOKEN")
+```
+
+Do not hardcode paid/private API keys into committed browser code. A static browser app cannot hide secrets.
+
+## Diagnostics
+
+Open the hidden diagnostics page by adding `#diagnostics` to the app URL:
+
+```text
+index.html#diagnostics
+```
+
+This page shows ESPN odds availability, Polymarket fetch/parse status, odds matching counts, current source availability, and common reasons a source is unavailable.
 
 ## Standings and Elimination
 

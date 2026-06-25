@@ -92,6 +92,15 @@
               <option value="utc">UTC</option>
             </select>
           </label>
+          <label class="sort-control odds-source-control" id="scheduleOddsSourceControl" title="">
+            <span>Chance source</span>
+            <select id="scheduleOddsSourceSelect">
+              <option value="auto">Auto best available</option>
+              <option value="sportsbook">Sportsbook odds</option>
+              <option value="polymarket">Polymarket price</option>
+              <option value="fifa">FIFA projection</option>
+            </select>
+          </label>
           <button class="utility" id="selectedTeamOnly">Selected team only</button>
           <button class="utility" id="showPreviousGames">Show previous games</button>
           <button class="utility" id="showMoreMatches">Show more matches</button>
@@ -131,6 +140,15 @@
             <h2 id="pathTitle">Selected team path</h2>
           </div>
           <p class="source-note">Round of 32 slots depend on final group rank and best third-place ranking.</p>
+          <label class="sort-control odds-source-control" id="pathOddsSourceControl" title="">
+            <span>Chance source</span>
+            <select id="pathOddsSourceSelect">
+              <option value="auto">Auto best available</option>
+              <option value="sportsbook">Sportsbook odds</option>
+              <option value="polymarket">Polymarket price</option>
+              <option value="fifa">FIFA projection</option>
+            </select>
+          </label>
         </div>
         <div class="path-layout">
           <div class="route-panel" id="routePanel"></div>
@@ -157,6 +175,17 @@
           </label>
         </div>
         <div class="team-grid" id="teamGrid"></div>
+      </section>
+
+      <section class="view secret-view" id="diagnosticsView" aria-labelledby="diagnosticsTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Secret</p>
+            <h2 id="diagnosticsTitle">Odds diagnostics</h2>
+          </div>
+          <p class="source-note">Open with <code>#diagnostics</code>. Values update after refresh.</p>
+        </div>
+        <div class="diagnostics-grid" id="diagnosticsGrid"></div>
       </section>
     </main>
 
