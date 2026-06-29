@@ -1,5 +1,5 @@
 # Path To The Cup 2026
-# [See it live here](https://cj-scott.github.io/PathToTheCup2026/)
+
 A local/static web app for tracking the 2026 FIFA World Cup.
 
 ## Features

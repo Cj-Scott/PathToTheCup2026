@@ -222,7 +222,7 @@ const teamByName = Object.fromEntries(allTeams.map(team => [team.name, team]));
 function renderTeamName(teamOrName) {
   const team = typeof teamOrName === "string" ? teamByName[teamOrName] : teamOrName;
   if (!team) return escapeHtml(String(teamOrName || ""));
-  return `<span class="team-name">${escapeHtml(team.name)}${renderTeamFlag(team)}</span>`;
+  return `<span class="team-name" title="${escapeAttr(team.name)}"><span class="team-name-full">${escapeHtml(team.name)}</span><span class="team-name-abbr">${escapeHtml(team.code)}</span>${renderTeamFlag(team)}</span>`;
 }
 
 function renderTeamFlag(team) {
@@ -553,6 +553,7 @@ function init() {
   window.addEventListener("resize", () => {
     drawBracketConnectors();
     syncBracketScroll();
+    fitTeamNames();
   });
   window.addEventListener("hashchange", renderHashView);
 
@@ -688,6 +689,21 @@ function renderAll() {
   renderPath();
   renderTeams();
   renderDiagnostics();
+  fitTeamNames();
+}
+
+function fitTeamNames() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".view.active .team-name, .topbar .team-name, .hero-grid .team-name").forEach(name => {
+      const full = name.querySelector(".team-name-full");
+      const abbr = name.querySelector(".team-name-abbr");
+      if (!full || !abbr) return;
+      name.classList.remove("use-abbr");
+      const available = name.getBoundingClientRect().width;
+      const required = full.scrollWidth + (name.querySelector(".country-flag")?.offsetWidth || 0) + 8;
+      if (available && required > available + 1) name.classList.add("use-abbr");
+    });
+  });
 }
 
 function updateOddsSourceControls() {
@@ -822,6 +838,7 @@ function renderSchedule() {
 
   if (!filtered.length) {
     els.matchList.innerHTML = `<div class="empty">No matches match the current filter.</div>`;
+    fitTeamNames();
     return;
   }
 
@@ -873,6 +890,7 @@ function renderSchedule() {
       button.textContent = card.classList.contains("open") ? "−" : "+";
     });
   });
+  fitTeamNames();
 }
 
 function resetSchedulePreview() {
@@ -1033,6 +1051,7 @@ function renderGroups() {
       </details>
     `;
   }).join("") || `<div class="empty">No groups match the current search.</div>`;
+  fitTeamNames();
 }
 
 function renderPath() {
@@ -1088,6 +1107,7 @@ function renderPath() {
   `;
   drawBracketConnectors(bracketPath);
   syncBracketScroll();
+  fitTeamNames();
 }
 
 function getBracketStatus(team, status) {
@@ -1400,6 +1420,7 @@ function renderTeams() {
       renderAll();
     });
   });
+  fitTeamNames();
 }
 
 function buildGroupMatches() {

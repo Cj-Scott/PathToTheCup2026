@@ -246,6 +246,27 @@ main {
   align-items: center;
   gap: 5px;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.team-name-full,
+.team-name-abbr {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-name-abbr,
+.team-name.use-abbr .team-name-full {
+  display: none;
+}
+
+.team-name.use-abbr .team-name-abbr {
+  display: inline;
+  flex: 0 1 auto;
 }
 
 .country-flag {
@@ -549,6 +570,8 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   min-height: 28px;
 }
 
