@@ -1094,11 +1094,11 @@ function renderPath() {
       <div class="bracket-status ${bracketStatus.key}" data-tip="${escapeAttr(getBracketStatusTooltip(team, paths, remainingGroupCopy, status))}"><b>${bracketStatus.message}</b></div>
       <div class="knockout-bracket">
         <svg class="bracket-connectors" aria-hidden="true"></svg>
-        ${getKnockoutRounds().map(round => `
-          <section class="bracket-round">
+        ${getKnockoutRounds().map((round, roundIndex) => `
+          <section class="bracket-round" data-round="${roundIndex + 1}">
             <h3>${round.label}</h3>
             <div class="bracket-stack">
-              ${round.matches.map((match, index) => renderBracketMatch(match, selectedTeam, bracketPath, index)).join("")}
+              ${round.matches.map(match => renderBracketMatch(match, selectedTeam, bracketPath)).join("")}
             </div>
           </section>
         `).join("")}
@@ -1152,13 +1152,13 @@ function getKnockoutRounds() {
   }));
 }
 
-function renderBracketMatch(match, selectedTeamName, bracketPath, roundIndex) {
+function renderBracketMatch(match, selectedTeamName, bracketPath) {
   const entries = getResolvedBracketTeams(match);
   const selected = entries.some(entry => entry.name === selectedTeamName);
   const winner = hasFinalScore(match) ? getMatchWinner(match) : "";
   const pathTone = bracketPath.get(match.id) || "";
   return `
-    <article class="bracket-match ${selected ? "selected" : ""} ${pathTone} ${match.status === "Final" ? "final" : ""}" style="--slot:${getBracketSlot(match, roundIndex)};" data-match-id="${match.id}" data-tip="${escapeAttr(getBracketMatchTooltip(match, entries))}">
+    <article class="bracket-match ${selected ? "selected" : ""} ${pathTone} ${match.status === "Final" ? "final" : ""}" style="--slot:${getBracketSlot(match)};" data-match-id="${match.id}" data-tip="${escapeAttr(getBracketMatchTooltip(match, entries))}">
       <div class="bracket-match-head">
         <span>${match.id}</span>
         <span>${formatMonthDay(match.date)} ${formatTime(match.date)}</span>
@@ -1188,9 +1188,9 @@ function getSelectedBracketPath(teamName) {
       break;
     }
     path.set(current.id, "path-active");
-    const nextSlot = getWinnerSlotForMatch(current);
-    if (!nextSlot) break;
-    current = matches.find(match => match.stage === "Knockout" && matchIncludesSlot(match, nextSlot));
+    const next = getWinnerTargetForMatch(current);
+    if (!next) break;
+    current = next.target;
   }
 
   return path;
@@ -1213,17 +1213,50 @@ function getLoserSlotForMatch(match) {
 }
 
 function getRelationshipTargets(match) {
-  return [getWinnerSlotForMatch(match), getLoserSlotForMatch(match)]
-    .filter(Boolean)
-    .map(slot => {
-      const target = matches.find(item => item.stage === "Knockout" && matchIncludesSlot(item, slot));
-      return target ? { target, slot } : null;
-    })
+  return [getWinnerTargetForMatch(match), getLoserTargetForMatch(match)]
     .filter(Boolean);
+}
+
+function getWinnerTargetForMatch(match) {
+  const slot = getWinnerSlotForMatch(match);
+  if (!slot) return null;
+  const winner = hasFinalScore(match) ? getMatchWinner(match) : "";
+  const resolvedTarget = winner
+    ? findFutureKnockoutMatchWithTeam(winner, match)
+    : null;
+  const target = resolvedTarget || findFutureKnockoutMatchWithSlot(slot, match);
+  return target ? { target, slot } : null;
+}
+
+function getLoserTargetForMatch(match) {
+  const slot = getLoserSlotForMatch(match);
+  if (!slot) return null;
+  const target = findFutureKnockoutMatchWithSlot(slot, match);
+  return target ? { target, slot } : null;
 }
 
 function matchIncludesSlot(match, slot) {
   return match.teams.includes(slot) || (match.sourceSlots || []).includes(slot);
+}
+
+function findFutureKnockoutMatchWithSlot(slot, sourceMatch) {
+  const sourceKickoff = new Date(sourceMatch.date).getTime();
+  return matches.find(match =>
+    match.stage === "Knockout" &&
+    match !== sourceMatch &&
+    new Date(match.date).getTime() > sourceKickoff &&
+    matchIncludesSlot(match, slot)
+  ) || null;
+}
+
+function findFutureKnockoutMatchWithTeam(teamName, sourceMatch) {
+  const sourceKickoff = new Date(sourceMatch.date).getTime();
+  return matches.find(match =>
+    match.stage === "Knockout" &&
+    match !== sourceMatch &&
+    new Date(match.date).getTime() > sourceKickoff &&
+    getResolvedBracketTeams(match).some(entry => entry.name === teamName)
+  ) || null;
 }
 
 function getRoundMatchNumber(match) {
@@ -1232,19 +1265,19 @@ function getRoundMatchNumber(match) {
   return index >= 0 ? index + 1 : 0;
 }
 
-function getBracketSlot(match, index) {
+function getBracketSlot(match) {
   const number = getRoundMatchNumber(match);
   const slots = {
     "Round of 32": {
       1: 1,
       3: 8,
-      2: 15,
+      4: 15,
       5: 22,
       11: 32,
       12: 39,
       9: 46,
       10: 53,
-      4: 67,
+      2: 67,
       6: 74,
       7: 81,
       8: 88,
@@ -1280,7 +1313,7 @@ function getBracketSlot(match, index) {
       1: 69
     }
   };
-  return slots[match.round]?.[number] || index * 2 + 1;
+  return slots[match.round]?.[number] || number * 2 + 1;
 }
 
 function syncBracketScroll() {
@@ -2312,6 +2345,7 @@ function applyScoreUpdates(updates) {
 
     updateMatchClock(match, update);
   });
+  result.fixtures += reconcileKnockoutSourceSlotsFromResolvedFixtures();
   return result;
 }
 
@@ -2518,6 +2552,58 @@ function updateMatchTeams(match, update) {
   match.teams = teams;
   match.note = match.stage === "Group" ? buildMatchContext(teams, match.group) : "Fixture teams updated from the external API as the bracket was resolved.";
   return true;
+}
+
+function reconcileKnockoutSourceSlotsFromResolvedFixtures() {
+  let changed = 0;
+  matches.filter(match => match.stage === "Knockout").forEach(match => {
+    match.teams.forEach((name, index) => {
+      const teamName = canonicalTeamName(name);
+      if (!teamName) return;
+      const sourceMatch = findCompletedKnockoutWinForTeam(teamName, match);
+      if (!sourceMatch) return;
+      const winnerSlot = getWinnerSlotForMatch(sourceMatch);
+      if (!winnerSlot) return;
+      changed += moveResolvedWinnerSlot(match, index, winnerSlot);
+    });
+  });
+  return changed;
+}
+
+function findCompletedKnockoutWinForTeam(teamName, targetMatch) {
+  const targetKickoff = new Date(targetMatch.date).getTime();
+  return matches
+    .filter(match =>
+      match !== targetMatch &&
+      match.stage === "Knockout" &&
+      hasFinalScore(match) &&
+      getMatchWinner(match) === teamName &&
+      new Date(match.date).getTime() < targetKickoff
+    )
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null;
+}
+
+function moveResolvedWinnerSlot(targetMatch, targetIndex, winnerSlot) {
+  targetMatch.sourceSlots = targetMatch.sourceSlots || targetMatch.teams.slice();
+  if (targetMatch.sourceSlots[targetIndex] === winnerSlot) return 0;
+
+  const displacedSlot = targetMatch.sourceSlots[targetIndex];
+  let changed = 1;
+  targetMatch.sourceSlots[targetIndex] = winnerSlot;
+
+  if (!isBracketSlotName(displacedSlot)) return changed;
+  matches.filter(match => match !== targetMatch && match.stage === "Knockout").forEach(match => {
+    match.sourceSlots = match.sourceSlots || match.teams.slice();
+    match.sourceSlots.forEach((slot, index) => {
+      if (slot !== winnerSlot) return;
+      match.sourceSlots[index] = displacedSlot;
+      if (match.teams[index] === winnerSlot || isPlaceholderTeam(match.teams[index])) {
+        match.teams[index] = displacedSlot;
+      }
+      changed += 1;
+    });
+  });
+  return changed;
 }
 
 function syncResolvedKnockoutFixtures() {
