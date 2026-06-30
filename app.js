@@ -1251,6 +1251,13 @@ function findFutureKnockoutMatchWithSlot(slot, sourceMatch) {
 
 function findFutureKnockoutMatchWithTeam(teamName, sourceMatch) {
   const sourceKickoff = new Date(sourceMatch.date).getTime();
+  const directTarget = matches.find(match =>
+    match.stage === "Knockout" &&
+    match !== sourceMatch &&
+    new Date(match.date).getTime() > sourceKickoff &&
+    match.teams.includes(teamName)
+  );
+  if (directTarget) return directTarget;
   return matches.find(match =>
     match.stage === "Knockout" &&
     match !== sourceMatch &&
@@ -1270,8 +1277,8 @@ function getBracketSlot(match) {
   const slots = {
     "Round of 32": {
       1: 1,
-      3: 8,
-      4: 15,
+      4: 8,
+      3: 15,
       5: 22,
       11: 32,
       12: 39,
@@ -1307,10 +1314,10 @@ function getBracketSlot(match) {
       2: 93
     },
     "Final": {
-      1: 56
+      1: 61
     },
     "Third-place match": {
-      1: 69
+      1: 61
     }
   };
   return slots[match.round]?.[number] || number * 2 + 1;
@@ -1782,10 +1789,11 @@ function hasResultScore(match) {
 }
 
 function hasFinalScore(match) {
-  return hasScore(match) && match.status === "Final";
+  return hasScore(match) && (match.status === "Final" || Boolean(match.winner));
 }
 
 function getMatchWinner(match) {
+  if (match.winner && hasScore(match)) return match.winner;
   if (!hasScore(match) || Number(match.score.home) === Number(match.score.away)) return "";
   return Number(match.score.home) > Number(match.score.away) ? match.teams[0] : match.teams[1];
 }
@@ -2167,6 +2175,7 @@ function normalizeProxyScores(payload) {
     odds: normalizeOdds(item.odds || item.probabilities || item.prediction, item.homeTeam || item.home || item.teams?.home, item.awayTeam || item.away || item.teams?.away),
     homeScore: item.homeScore ?? item.score?.home ?? item.score?.fullTime?.home,
     awayScore: item.awayScore ?? item.score?.away ?? item.score?.fullTime?.away,
+    winnerTeam: item.winnerTeam || item.winner || item.advanceTeam,
     status: item.status || item.state,
     updatedAt: item.updatedAt || item.lastUpdated || new Date().toISOString()
   }));
@@ -2184,6 +2193,7 @@ function normalizeFootballDataScores(payload) {
     odds: normalizeOdds(item.odds, item.homeTeam?.name, item.awayTeam?.name),
     homeScore: item.score?.fullTime?.home ?? item.score?.regularTime?.home,
     awayScore: item.score?.fullTime?.away ?? item.score?.regularTime?.away,
+    winnerTeam: item.score?.winner === "HOME_TEAM" ? item.homeTeam?.name : item.score?.winner === "AWAY_TEAM" ? item.awayTeam?.name : "",
     status: item.status,
     updatedAt: item.lastUpdated || new Date().toISOString()
   }));
@@ -2213,6 +2223,7 @@ function normalizeEspnScores(payload) {
       odds,
       homeScore: hasResult ? home?.score : null,
       awayScore: hasResult ? away?.score : null,
+      winnerTeam: hasResult ? competitors.find(team => team.winner || team.advance)?.team?.displayName : "",
       status,
       updatedAt: new Date().toISOString()
     };
@@ -2333,6 +2344,12 @@ function applyScoreUpdates(updates) {
       };
       match.scoreUpdatedAt = update.updatedAt;
       result.scores += 1;
+    }
+
+    const winnerTeam = canonicalTeamName(update.winnerTeam);
+    if (winnerTeam && match.winner !== winnerTeam) {
+      match.winner = winnerTeam;
+      result.fixtures += 1;
     }
 
     if (update.odds) attachMatchOdds(match, update.odds);
